@@ -1,0 +1,12 @@
+:host {
+  .panel {
+    @apply rounded p-10;
+    background-color: var(--sl-color-neutral-50);
+  }
+  .brc20-icon {
+    @apply w-9 h-9 inline-block bg-contain bg-center bg-no-repeat flex-none;
+  }
+  sl-button.supply {
+    @apply w-full;
+  }
+}

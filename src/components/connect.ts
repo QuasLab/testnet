@@ -1,5 +1,6 @@
 import { LitElement, html, unsafeCSS } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
+import { Ref, createRef, ref } from 'lit/directives/ref.js'
 import style from '/src/base.css?inline'
 import '@shoelace-style/shoelace/dist/components/alert/alert'
 import '@shoelace-style/shoelace/dist/components/button/button'
@@ -10,7 +11,6 @@ import '@shoelace-style/shoelace/dist/components/icon/icon'
 import '@shoelace-style/shoelace/dist/components/menu/menu'
 import '@shoelace-style/shoelace/dist/components/menu-item/menu-item'
 import { SlAlert, SlDialog } from '@shoelace-style/shoelace'
-import { Ref, createRef, ref } from 'lit/directives/ref.js'
 import { walletState } from '../state/wallet'
 import { when } from 'lit/directives/when.js'
 import { getAddressInfo } from 'bitcoin-address-validation'
@@ -18,8 +18,8 @@ import { getAddressInfo } from 'bitcoin-address-validation'
 @customElement('connect-button')
 export class ConnectButton extends LitElement {
   static styles = [unsafeCSS(style)]
-  @state() dialog = createRef<SlDialog>()
-  @state() alert = createRef<SlAlert>()
+  @state() dialog: Ref<SlDialog> = createRef<SlDialog>()
+  @state() alert: Ref<SlAlert> = createRef<SlAlert>()
   @state() alertMessage: any
   @state() connectingWallet = ''
   @state() address = ''
@@ -119,7 +119,9 @@ export class ConnectButton extends LitElement {
         this.address,
         () => html`
           <sl-dropdown placement="bottom-end" @sl-show=${this.updateBalance.bind(this)}>
-            <sl-button slot="trigger" caret pill>${this.address}</sl-button>
+            <sl-button slot="trigger" caret pill>
+              <p class="w-28 sm:w-auto truncate sm:text-clip">${this.address}</p>
+            </sl-button>
             <sl-menu>
               <sl-menu-item .disabled=${this.ticks}>Ticks: ${this.ticks}</sl-menu-item>
               <sl-divider></sl-divider>
