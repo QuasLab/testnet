@@ -9,7 +9,7 @@ export default {
     modules: { generateScopedName: '[hash:base64:6]' }
   },
   plugins: [
-    vercel(),
+    // vercel(),
     viteStaticCopy({
       targets: [
         {
