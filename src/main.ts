@@ -21,7 +21,7 @@ import { SupplyTickPanel } from './components/supplyTick'
 import { BorrowPanel } from './components/borrow'
 import { RepayPanel } from './components/repay'
 
-setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/dist')
+setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/')
 
 function darkMode(enable = true) {
   if (enable) {
