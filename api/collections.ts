@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { okxFetch } from './lib/okxFetch.js'
+import { okxFetch } from '../api_lib/okxFetch.js'
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   const slug = request.query['slug']

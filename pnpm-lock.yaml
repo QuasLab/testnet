@@ -8,6 +8,21 @@ dependencies:
   '@lit-app/state':
     specifier: ^1.0.0
     version: 1.0.0
+  '@noble/curves':
+    specifier: ^1.3.0
+    version: 1.3.0
+  '@noble/hashes':
+    specifier: ^1.3.3
+    version: 1.3.3
+  '@scure/base':
+    specifier: ^1.1.5
+    version: 1.1.5
+  '@scure/bip32':
+    specifier: ^1.3.3
+    version: 1.3.3
+  '@scure/btc-signer':
+    specifier: ^1.2.0
+    version: 1.2.0
   '@shoelace-style/shoelace':
     specifier: ^2.12.0
     version: 2.12.0(@types/react@18.2.46)
@@ -846,6 +861,17 @@ packages:
       - supports-color
     dev: true
 
+  /@noble/curves@1.3.0:
+    resolution: {integrity: sha512-t01iSXPuN+Eqzb4eBX0S5oubSqXbK/xXa1Ne18Hj8f9pStxztHCE2gfboSp/dZRLSqfuLpRK2nDXDK+W9puocA==}
+    dependencies:
+      '@noble/hashes': 1.3.3
+    dev: false
+
+  /@noble/hashes@1.3.3:
+    resolution: {integrity: sha512-V7/fPHgl+jsVPXqqeOzT8egNj2iBIVt+ECeMMG8TdcnTikP3oaBtUVqpT/gYCR68aEBJSF+XbYUxStjbFMqIIA==}
+    engines: {node: '>= 16'}
+    dev: false
+
   /@nodelib/fs.scandir@2.1.5:
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -985,6 +1011,27 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@scure/base@1.1.5:
+    resolution: {integrity: sha512-Brj9FiG2W1MRQSTB212YVPRrcbjkv48FoZi/u4l/zds/ieRrqsh7aUf6CLwkAq61oKXr/ZlTzlY66gLIj3TFTQ==}
+    dev: false
+
+  /@scure/bip32@1.3.3:
+    resolution: {integrity: sha512-LJaN3HwRbfQK0X1xFSi0Q9amqOgzQnnDngIt+ZlsBC3Bm7/nE7K0kwshZHyaru79yIVRv/e1mQAjZyuZG6jOFQ==}
+    dependencies:
+      '@noble/curves': 1.3.0
+      '@noble/hashes': 1.3.3
+      '@scure/base': 1.1.5
+    dev: false
+
+  /@scure/btc-signer@1.2.0:
+    resolution: {integrity: sha512-EopDXEzFblSwj/hMb+Hn4Pm/3LnDPIcgYbSCFQCkQMMZiIGcB9UUxA/mPuGoGVPkI4N4g7KkSurQB7XjEcFBmw==}
+    dependencies:
+      '@noble/curves': 1.3.0
+      '@noble/hashes': 1.3.3
+      '@scure/base': 1.1.5
+      micro-packed: 0.5.0
+    dev: false
 
   /@shoelace-style/animations@1.1.0:
     resolution: {integrity: sha512-Be+cahtZyI2dPKRm8EZSx3YJQ+jLvEcn3xzRP7tM4tqBnvd/eW/64Xh0iOf0t2w5P8iJKfdBbpVNE9naCaOf2g==}
@@ -2427,6 +2474,12 @@ packages:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
     engines: {node: '>= 8'}
     dev: true
+
+  /micro-packed@0.5.0:
+    resolution: {integrity: sha512-64sfm7giGWi1qFdH9D2hCUz/YPXPe41v8bYN/q8oYiimtEe4fqQ8r0oM6vknk3+H+Yf8jjEFSDpAYSFI9fiuAQ==}
+    dependencies:
+      '@scure/base': 1.1.5
+    dev: false
 
   /micro@9.3.5-canary.3:
     resolution: {integrity: sha512-viYIo9PefV+w9dvoIBh1gI44Mvx1BOk67B4BpC2QK77qdY0xZF0Q+vWLt/BII6cLkIc8rLmSIcJaB/OrXXKe1g==}

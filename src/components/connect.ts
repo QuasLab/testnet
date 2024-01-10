@@ -1,6 +1,8 @@
-import { LitElement, html, unsafeCSS } from 'lit'
+import { LitElement, PropertyValueMap, html, unsafeCSS } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { Ref, createRef, ref } from 'lit/directives/ref.js'
+import { when } from 'lit/directives/when.js'
+import { map } from 'lit/directives/map.js'
 import style from '/src/base.css?inline'
 import '@shoelace-style/shoelace/dist/components/alert/alert'
 import '@shoelace-style/shoelace/dist/components/button/button'
@@ -11,9 +13,9 @@ import '@shoelace-style/shoelace/dist/components/icon/icon'
 import '@shoelace-style/shoelace/dist/components/menu/menu'
 import '@shoelace-style/shoelace/dist/components/menu-item/menu-item'
 import { SlAlert, SlDialog } from '@shoelace-style/shoelace'
-import { walletState } from '../state/wallet'
-import { when } from 'lit/directives/when.js'
 import { getAddressInfo } from 'bitcoin-address-validation'
+import { StateController, walletState } from '../lib/walletState'
+import { WalletNames, WalletType, WalletTypes } from '../lib/wallets'
 
 @customElement('connect-button')
 export class ConnectButton extends LitElement {
@@ -21,93 +23,54 @@ export class ConnectButton extends LitElement {
   @state() dialog: Ref<SlDialog> = createRef<SlDialog>()
   @state() alert: Ref<SlAlert> = createRef<SlAlert>()
   @state() alertMessage: any
-  @state() connectingWallet = ''
-  @state() address = ''
+  @state() connectingWallet?: WalletType
   @state() ticks: any
 
-  connectedCallback(): void {
-    super.connectedCallback()
-    switch (walletState.wallet) {
-      case 'okx':
-        this.connectOkx()
-        break
-      case 'unisat':
-        this.connectUniSat()
-        break
-    }
-  }
-
-  connect() {
-    this.dialog.value?.show()
+  constructor() {
+    super()
+    new StateController(this, walletState)
   }
 
   disconnect() {
     walletState.reset()
-    walletState.wallet = ''
-    this.address = ''
   }
 
-  async connectUniSat() {
-    if (typeof unisat === 'undefined') {
+  async connect(type: WalletType) {
+    walletState.useWallet(type)
+    if (!walletState.connector.installed) {
       this.alertMessage = 'Wallet is not installed.'
       this.alert.value?.toast()
       return
     }
-    this.connectingWallet = 'unisat'
+    this.connectingWallet = type
     try {
-      const res = await unisat.getNetwork()
-      if (res != 'testnet') await unisat.switchNetwork('testnet')
+      const res = await walletState.connector.network
+      if (res != 'testnet') await walletState.connector.switchNetwork('testnet')
     } catch (e) {
       console.warn(e)
-      this.alertMessage = 'Failed to swith to testnet'
+      this.alertMessage = 'Failed to switch to testnet'
       this.alert.value?.toast()
+      return
     }
     try {
-      let result = await unisat.getAccounts()
-      if (!Array.isArray(result) || result.length == 0) result = await unisat.requestAccounts()
+      let result = await walletState.connector.accounts
+      if (!Array.isArray(result) || result.length == 0) result = await walletState.connector.requestAccounts()
       const info = getAddressInfo(result[0])
       if (info.network != 'testnet') {
-        throw new Error(`${result.address} is not a testnet address`)
+        throw new Error(`${result[0]} is not a testnet address`)
       }
-      walletState.wallet = 'unisat'
-      this.address = walletState.address = result[0]
-      // walletState.publicKey = result.publicKey
+      walletState.wallet = type
       this.dialog.value?.hide()
     } catch (e) {
       console.warn(e)
       this.alertMessage = e
       this.alert.value?.toast()
     }
-    this.connectingWallet = ''
-  }
-
-  async connectOkx() {
-    if (typeof okxwallet === 'undefined') {
-      this.alertMessage = 'Wallet is not installed.'
-      this.alert.value?.toast()
-      return
-    }
-    this.connectingWallet = 'okx'
-    try {
-      const result = await okxwallet.bitcoin.connect()
-      const info = getAddressInfo(result.address)
-      if (info.network != 'testnet') {
-        throw new Error(`${result.address} is not a testnet address`)
-      }
-      walletState.wallet = 'okx'
-      this.address = walletState.address = result.address
-      walletState.publicKey = result.publicKey
-      this.dialog.value?.hide()
-    } catch (e) {
-      console.warn(e)
-      this.alertMessage = e
-      this.alert.value?.toast()
-    }
-    this.connectingWallet = ''
+    this.connectingWallet = undefined
   }
 
   async updateBalance() {
-    const response = await fetch(`https://ord.testnet.fans3.org/api/v1/brc20/address/${this.address}/balance`)
+    const response = await fetch(`https://ord.testnet.fans3.org/api/v1/brc20/address/${walletState.address}/balance`)
     const result = await response.json()
     const balance = result.data?.balance
     if (Array.isArray(balance)) this.ticks = balance.length
@@ -116,11 +79,11 @@ export class ConnectButton extends LitElement {
   render() {
     return html`
       ${when(
-        this.address,
+        walletState.address,
         () => html`
           <sl-dropdown placement="bottom-end" @sl-show=${this.updateBalance.bind(this)}>
             <sl-button slot="trigger" caret pill>
-              <p class="w-28 sm:w-auto truncate sm:text-clip">${this.address}</p>
+              <p class="w-28 sm:w-auto truncate sm:text-clip">${walletState.address}</p>
             </sl-button>
             <sl-menu>
               <sl-menu-item .disabled=${this.ticks}>Ticks: ${this.ticks}</sl-menu-item>
@@ -133,28 +96,23 @@ export class ConnectButton extends LitElement {
           </sl-dropdown>
         `,
         () => html`
-          <sl-button @click=${this.connect.bind(this)}>Connect</sl-button>
+          <sl-button @click=${() => this.dialog.value?.show()}>Connect</sl-button>
           <sl-dialog label="Dialog" style="--width: xl;" ${ref(this.dialog)}>
             <span slot="label">Choose Wallet</span>
             <div class="space-y-2">
-              <sl-button
-                class="w-full"
-                .disabled=${this.connectingWallet}
-                .loading=${this.connectingWallet == 'unisat'}
-                @click=${this.connectUniSat.bind(this)}
-              >
-                <sl-icon slot="prefix" src="unisat.svg"></sl-icon>
-                UniSat
-              </sl-button>
-              <sl-button
-                class="w-full"
-                .disabled=${this.connectingWallet}
-                .loading=${this.connectingWallet == 'okx'}
-                @click=${this.connectOkx.bind(this)}
-              >
-                <sl-icon slot="prefix" src="okx.svg"></sl-icon>
-                OKX
-              </sl-button>
+              ${map(
+                WalletTypes,
+                (type) =>
+                  html`<sl-button
+                    class="w-full"
+                    .disabled=${this.connectingWallet}
+                    .loading=${this.connectingWallet == type}
+                    @click=${() => this.connect(type)}
+                  >
+                    <sl-icon slot="prefix" src="${type}.svg"></sl-icon>
+                    ${WalletNames[type]}
+                  </sl-button>`
+              )}
             </div>
           </sl-dialog>
         `

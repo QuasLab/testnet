@@ -1,14 +1,16 @@
 import { LitElement, html, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { Ref, createRef, ref } from 'lit/directives/ref.js'
+import { unsafeHTML } from 'lit/directives/unsafe-html.js'
 import baseStyle from '/src/base.css?inline'
 import style from './supply.css?inline'
+import '@shoelace-style/shoelace/dist/components/alert/alert'
 import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/input/input'
 import '@shoelace-style/shoelace/dist/components/drawer/drawer'
-import SlDrawer from '@shoelace-style/shoelace/dist/components/drawer/drawer'
-import { walletState } from '../state/wallet'
-import SlInput from '@shoelace-style/shoelace/dist/components/input/input'
+import { StateController, walletState } from '../lib/walletState'
+import { SlAlert, SlDrawer, SlInput } from '@shoelace-style/shoelace'
+import { sha256 } from '@noble/hashes/sha256'
 
 @customElement('supply-panel')
 export class SupplyPanel extends LitElement {
@@ -16,21 +18,49 @@ export class SupplyPanel extends LitElement {
   @property() coin = 'Bitcoin'
   @state() drawer: Ref<SlDrawer> = createRef<SlDrawer>()
   @state() input: Ref<SlInput> = createRef<SlInput>()
-  @state() walletBalance = 0
+  @state() alert: Ref<SlAlert> = createRef<SlAlert>()
   @state() inputValue = 0
+  @state() adding = false
+  @state() alertMessage: any
 
-  connectedCallback(): void {
-    super.connectedCallback()
+  get walletBalance() {
+    return walletState.balance?.confirmed ?? 0
+  }
 
-    walletState.subscribe(() => {
-      walletState.balance.then((res) => {
-        this.walletBalance = res.confirmed
-      })
-    }, 'address')
+  constructor() {
+    super()
+    new StateController(this, walletState)
   }
 
   public show() {
     return this.drawer.value?.show()
+  }
+
+  private async addSupply() {
+    this.adding = true
+    try {
+      const addr = await fetch(`/api/depositAddress?pub=${await walletState.connector.publicKey}`)
+        .then((res) => {
+          if (res.status != 200)
+            return res.json().then((json) => {
+              throw new Error(json.message)
+            })
+          return res.json()
+        })
+        .then((js) => js.address)
+      console.log(addr, this.input.value!.valueAsNumber * 1e8)
+      //   const tx = await walletState.connector.sendBitcoin(addr, this.input.value!.valueAsNumber * 1e8)
+      const tx = sha256(addr)
+      this.alertMessage = unsafeHTML(
+        `Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> is sent.(FAKE)`
+      )
+      this.alert.value?.toast()
+    } catch (e) {
+      console.warn(e)
+      this.alertMessage = e
+      this.alert.value?.toast()
+    }
+    this.adding = false
   }
 
   render() {
@@ -73,9 +103,29 @@ export class SupplyPanel extends LitElement {
         </div>
         <div class="mt-4 flex space-x-4">
           <sl-button class="w-full" @click=${() => this.drawer.value?.hide()} pill>Cancel</sl-button>
-          <sl-button class="w-full" ?disabled=${this.inputValue <= 0} pill>Add</sl-button>
+          <sl-button
+            class="w-full"
+            ?disabled=${this.inputValue <= 0}
+            @click=${() => this.addSupply()}
+            pill
+            .loading=${this.adding}
+            >Add</sl-button
+          >
         </div>
       </sl-drawer>
+
+      <sl-alert
+        variant=${this.alertMessage instanceof Error ? 'danger' : 'warning'}
+        duration="3000"
+        closable
+        ${ref(this.alert)}
+      >
+        <sl-icon
+          slot="icon"
+          name=${this.alertMessage instanceof Error ? 'exclamation-octagon' : 'info-circle'}
+        ></sl-icon>
+        ${this.alertMessage?.message ?? this.alertMessage}
+      </sl-alert>
     `
   }
 }
