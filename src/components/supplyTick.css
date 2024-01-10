@@ -1,0 +1,12 @@
+:host {
+  sl-input::part(input) {
+    @apply p-0;
+  }
+  sl-drawer::part(body) {
+    @apply p-5;
+    background-color: var(--sl-color-neutral-100);
+  }
+  .brc20-icon {
+    @apply w-3 h-3 inline-block bg-contain bg-center bg-no-repeat flex-none mr-1;
+  }
+}

@@ -10,10 +10,16 @@ import '@shoelace-style/shoelace/dist/components/icon/icon'
 import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/divider/divider'
 import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.js'
+import './components/borrow'
 import './components/connect'
+import './components/repay'
 import './components/supply'
+import './components/supplyTick'
 import { SupplyPanel } from './components/supply'
 import { StateController, walletState } from './lib/walletState'
+import { SupplyTickPanel } from './components/supplyTick'
+import { BorrowPanel } from './components/borrow'
+import { RepayPanel } from './components/repay'
 
 setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/dist')
 
@@ -38,6 +44,9 @@ export class AppMain extends LitElement {
   @state() priceOrdi?: string
   @state() priceSats?: string
   @state() supplyPanel: Ref<SupplyPanel> = createRef<SupplyPanel>()
+  @state() supplyTickPanel: Ref<SupplyTickPanel> = createRef<SupplyTickPanel>()
+  @state() borrowPanel: Ref<BorrowPanel> = createRef<BorrowPanel>()
+  @state() repayPanel: Ref<RepayPanel> = createRef<RepayPanel>()
   @state() withdrawing = false
 
   get walletBalance() {
@@ -68,21 +77,40 @@ export class AppMain extends LitElement {
       .then((res) => {
         this.priceSats = res?.data?.data?.[0]?.floorPrice
       })
-    setTimeout(this.supply.bind(this), 1000)
   }
 
   supply() {
     this.supplyPanel.value?.show()
   }
 
+  supplyTick(tick: string) {
+    this.supplyTickPanel.value!.tick = tick
+    this.supplyTickPanel.value?.show()
+  }
+
+  withdrawTick(tick: string) {
+    walletState._collateralBalance = 0
+  }
+
   async withdraw() {
     this.withdrawing = true
-    fetch(`/api/withdraw?pub=${await walletState.connector.publicKey}&address=${walletState.address}`)
-      .then((res) => res.json())
-      .then((res) => {
-        this.priceSats = res?.data?.data?.[0]?.floorPrice
-      })
-      .finally(() => (this.withdrawing = false))
+    // fetch(`/api/withdraw?pub=${await walletState.connector.publicKey}&address=${walletState.address}`)
+    //   .then((res) => res.json())
+    //   .then((res) => {
+    //     this.priceSats = res?.data?.data?.[0]?.floorPrice
+    //   })
+    //   .finally(() => (this.withdrawing = false))
+    walletState._balance!.confirmed += walletState._protocolBalance![0].value
+    walletState._protocolBalance = [{ value: 0 }]
+    this.withdrawing = false
+  }
+
+  async borrow() {
+    this.borrowPanel.value?.show()
+  }
+
+  async repay() {
+    this.repayPanel.value?.show()
   }
 
   formatPrice(price?: string) {
@@ -108,28 +136,51 @@ export class AppMain extends LitElement {
 
         <div class="my-10 grid sm:flex">
           <div class="sm:flex-auto font-medium">
-            <span class="text-xs" style="color:var(--sl-color-green-500)">Balance</span>
-            <div class="flex text-4xl my-1 items-center">
-              <sl-icon outline name="currency-bitcoin"></sl-icon>${Math.floor(this.protocolBalance / 1e8)}.<span
-                class="text-sl-neutral-600"
-                >${Math.floor((this.protocolBalance % 1e8) / 1e4)
-                  .toString()
-                  .padStart(4, '0')}</span
-              >
-            </div>
-            <span class="text-xs">$0.00</span>
+            ${when(
+              walletState.borrowedBalance <= 0,
+              () => html`
+                <span class="text-xs" style="color:var(--sl-color-green-500)">Balance</span>
+                <div class="flex text-4xl my-1 items-center">
+                  <sl-icon outline name="currency-bitcoin"></sl-icon>${Math.floor(this.protocolBalance / 1e8)}.<span
+                    class="text-sl-neutral-600"
+                    >${Math.floor((this.protocolBalance % 1e8) / 1e4)
+                      .toString()
+                      .padStart(4, '0')}</span
+                  >
+                </div>
+                <span class="text-xs">$0.00</span>
+              `,
+              () => html`
+                <span class="text-xs" style="color:var(--sl-color-green-500)">Borrowing</span
+                ><span class="text-xs text-sl-neutral-600">@</span><span class="text-xs">2.6%</span>
+                <div class="flex text-4xl my-1 items-center">
+                  <sl-icon outline name="currency-bitcoin"></sl-icon>${Math.floor(walletState.borrowedBalance)}.<span
+                    class="text-sl-neutral-600"
+                    >${Math.floor((walletState.borrowedBalance * 1e4) % 1e4)
+                      .toString()
+                      .padStart(4, '0')}</span
+                  >
+                </div>
+                <span class="text-xs">$0.00</span>
+              `
+            )}
           </div>
           <div class="mt-5 flex sm:my-auto space-x-4">
-            <sl-button
-              class="supply"
-              variant=${this.walletBalance <= 0 ? 'default' : 'success'}
-              @click=${() => this.supply()}
-              ?disabled=${this.walletBalance <= 0}
-              pill
-            >
-              <sl-icon slot="prefix" name="plus-circle-fill"></sl-icon>
-              Supply BTC
-            </sl-button>
+            ${when(
+              walletState._collateralBalance <= 0,
+              () => html`
+                <sl-button
+                  class="supply"
+                  variant=${this.walletBalance <= 0 ? 'default' : 'success'}
+                  @click=${() => this.supply()}
+                  ?disabled=${this.walletBalance <= 0}
+                  pill
+                >
+                  <sl-icon slot="prefix" name="plus-circle-fill"></sl-icon>
+                  Supply BTC
+                </sl-button>
+              `
+            )}
             ${when(
               this.protocolBalance > 0,
               () => html`
@@ -145,53 +196,87 @@ export class AppMain extends LitElement {
                 </sl-button>
               `,
               () => html`
-                <sl-button class="supply" variant="default" disabled pill>
+                <sl-button
+                  class="supply"
+                  variant=${walletState._collateralBalance <= 0 ? 'default' : 'primary'}
+                  ?disabled=${walletState._collateralBalance <= 0}
+                  pill
+                  @click=${() => this.borrow()}
+                >
                   <sl-icon slot="prefix" name="plus-circle-fill"></sl-icon>
                   Borrow BTC
                 </sl-button>
+                ${when(
+                  walletState._collateralBalance > 0,
+                  () => html`
+                    <sl-button
+                      class="supply"
+                      variant=${walletState._borrowedBalance <= 0 ? 'default' : 'primary'}
+                      ?disabled=${walletState._borrowedBalance <= 0}
+                      pill
+                      @click=${() => this.repay()}
+                    >
+                      <sl-icon slot="prefix" name="plus-circle-fill"></sl-icon>
+                      Repay BTC
+                    </sl-button>
+                  `
+                )}
               `
             )}
           </div>
         </div>
 
         <div class="grid grid-cols-5 space-y-5 sm:grid-cols-12 sm:space-x-5 sm:space-y-0">
-          <div class="col-span-7 panel !rounded-none">
-            <ul>
-              <li class="text-xs mb-3">Tick</li>
-              <li class="py-4 flex items-center">
-                <span class="brc20-icon" style="background-image:url(brc20-ordi.png)"></span>
-                <div class="ml-3 flex-auto">
-                  <p class="text-sm">ordi</p>
-                  <p class="text-xs text-sl-neutral-600">${this.formatPrice(this.priceOrdi)} sats</p>
-                </div>
-                <div class="space-x-2">
-                  <sl-button variant="default" circle disabled>
-                    <sl-icon name="plus"></sl-icon>
-                  </sl-button>
-                  <sl-button variant="default" circle disabled>
-                    <sl-icon name="dash"></sl-icon>
-                  </sl-button>
-                </div>
-              </li>
-              <li class="py-4 flex items-center">
-                <span class="brc20-icon" style="background-image:url(brc20-sats.png)"></span>
-                <div class="ml-3 flex-auto">
-                  <p class="text-sm">sats</p>
-                  <p class="text-xs text-sl-neutral-600">${this.formatPrice(this.priceSats)} sats</p>
-                </div>
-                <div class="space-x-2">
-                  <sl-button variant="default" circle disabled>
-                    <sl-icon name="plus"></sl-icon>
-                  </sl-button>
-                  <sl-button variant="default" circle disabled>
-                    <sl-icon name="dash"></sl-icon>
-                  </sl-button>
-                </div>
-              </li>
-            </ul>
+          <div class="col-span-7">
+            <div class="relative panel !rounded-none">
+              <ul>
+                <li class="text-xs mb-3">Tick</li>
+                <li class="py-4 flex items-center">
+                  <span class="brc20-icon" style="background-image:url(brc20-ordi.png)"></span>
+                  <div class="ml-3 flex-auto">
+                    <p class="text-sm">ordi</p>
+                    <p class="text-xs text-sl-neutral-600">${this.formatPrice(this.priceOrdi)} sats</p>
+                  </div>
+                  <div class="space-x-2">
+                    <sl-button variant="default" circle @click=${() => this.supplyTick('ordi')}>
+                      <sl-icon name="plus"></sl-icon>
+                    </sl-button>
+                    <sl-button
+                      variant="default"
+                      circle
+                      ?disabled=${walletState.collateralBalance <= 0}
+                      @click=${() => this.withdrawTick('ordi')}
+                    >
+                      <sl-icon name="dash"></sl-icon>
+                    </sl-button>
+                  </div>
+                </li>
+                <li class="py-4 flex items-center">
+                  <span class="brc20-icon" style="background-image:url(brc20-sats.png)"></span>
+                  <div class="ml-3 flex-auto">
+                    <p class="text-sm">sats</p>
+                    <p class="text-xs text-sl-neutral-600">${this.formatPrice(this.priceSats)} sats</p>
+                  </div>
+                  <div class="space-x-2">
+                    <sl-button variant="default" circle @click=${() => this.supplyTick('sats')}>
+                      <sl-icon name="plus"></sl-icon>
+                    </sl-button>
+                    <sl-button
+                      variant="default"
+                      circle
+                      ?disabled=${walletState.collateralBalance <= 0}
+                      @click=${() => this.withdrawTick('sats')}
+                    >
+                      <sl-icon name="dash"></sl-icon>
+                    </sl-button>
+                  </div>
+                </li>
+              </ul>
+              <supply-tick-panel ${ref(this.supplyTickPanel)}></supply-tick-panel>
+            </div>
           </div>
 
-          <div class="col-span-5">
+          <div class="col-span-5 space-y-2">
             <div class="relative panel font-medium">
               <span class="text-xs text-sl-neutral-600">Wallet Balance</span>
               <div class="flex text-xl my-1 items-center">
@@ -206,18 +291,28 @@ export class AppMain extends LitElement {
               <div class="flex">
                 <div class="flex-1">
                   <span class="text-xs text-sl-neutral-600">Borrow APR</span>
-                  <div class="mt-2">2.25%</div>
+                  <div class="mt-2">2.65%</div>
                 </div>
                 <div class="flex-1 text-end">
                   <span class="text-xs text-sl-neutral-600">Supply APR</span>
-                  <div class="mt-2">2.65%</div>
+                  <div class="mt-2">2.25%</div>
                 </div>
               </div>
               <supply-panel ${ref(this.supplyPanel)}></supply-panel>
             </div>
+
+            <div class="relative panel">
+              <span class="text-xs text-sl-neutral-600 font-medium">Position Summary</span>
+              <div class="flex my-4 text-sm">
+                <span class="flex-1">Collateral Value</span>
+                <span class="flex-1 text-end">${walletState.collateralBalance}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      <borrow-panel ${ref(this.borrowPanel)}></borrow-panel>
+      <repay-panel ${ref(this.repayPanel)}></repay-panel>
     `
   }
 }

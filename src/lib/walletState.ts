@@ -33,7 +33,8 @@ class WalletState extends State {
     return this._publicKey
   }
 
-  @property({ type: Object }) private _balance?: Balance
+  // @property({ type: Object }) private _balance?: Balance
+  @property({ type: Object }) _balance?: Balance
   private _balancePromise?: any
   public get balance(): Balance | undefined {
     if (!this._balance && !this._balancePromise) {
@@ -46,13 +47,11 @@ class WalletState extends State {
     return this._balance
   }
 
-  @property({ type: Object }) private _protocolBalance?: any[]
+  // @property({ type: Object }) private _protocolBalance?: any[]
+  @property({ type: Object }) _protocolBalance?: any[]
   private _protocolBalancePromise?: any
   public get protocolBalance(): any[] | undefined {
-    return (this._protocolBalance ??= [
-      { value: Math.floor(Math.random() * 1e8) },
-      { value: Math.floor(Math.random() * 1e8) }
-    ])
+    return this._protocolBalance
     if (!this._protocolBalance && !this._protocolBalancePromise) {
       this._protocolBalancePromise = walletState.connector.publicKey
         .then((publicKey) => fetch(`/api/depositAddress?pub=${publicKey}`))
@@ -78,6 +77,20 @@ class WalletState extends State {
     return this._protocolBalance
   }
 
+  // @property({ type: Object }) private _collateralBalance?: any[]
+  @property({ value: 0 }) _collateralBalance = 0
+  private _collateralBalancePromise?: any
+  public get collateralBalance(): number {
+    return this._collateralBalance
+  }
+
+  // @property({ type: Object }) private _collateralBalance?: any[]
+  @property({ value: 0 }) _borrowedBalance = 0
+  private _borrowedBalancePromise?: any
+  public get borrowedBalance(): number {
+    return this._borrowedBalance
+  }
+
   private _connector?: Wallet
   get connector(): Wallet {
     if (!this._connector && this.wallet) this.useWallet(this.wallet)
@@ -89,6 +102,8 @@ class WalletState extends State {
       this._address = accounts[0]
       this._balance = undefined
       this._protocolBalance = undefined
+      this._collateralBalance = 0
+      this._borrowedBalance = 0
       this._publicKey
     } else this.reset()
   }
