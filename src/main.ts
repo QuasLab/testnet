@@ -94,7 +94,7 @@ export class AppMain extends LitElement {
 
   async withdraw() {
     this.withdrawing = true
-    fetch(`/api/withdraw?pub=${await walletState.connector.publicKey}&address=${walletState.address}`)
+    fetch(`/api/withdraw?pub=${await walletState.connector!.publicKey}&address=${walletState.address}`)
       .then((res) => res.json())
       .then((res) => {
         this.priceSats = res?.data?.data?.[0]?.floorPrice

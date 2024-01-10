@@ -37,7 +37,7 @@ export class ConnectButton extends LitElement {
 
   async connect(type: WalletType) {
     walletState.useWallet(type)
-    if (!walletState.connector.installed) {
+    if (!walletState.connector || !walletState.connector.installed) {
       this.alertMessage = 'Wallet is not installed.'
       this.alert.value?.toast()
       return

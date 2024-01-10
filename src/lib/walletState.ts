@@ -12,7 +12,7 @@ class WalletState extends State {
   private _addressPromise?: any
   public get address(): string | undefined {
     if (!this._address && !this._addressPromise) {
-      if (this.connector.installed)
+      if (this.connector?.installed)
         this._addressPromise = this.connector?.accounts
           .then((accounts) => {
             this._address = accounts[0]
@@ -52,7 +52,7 @@ class WalletState extends State {
   private _protocolBalancePromise?: any
   public get protocolBalance(): any[] | undefined {
     if (!this._protocolBalance && !this._protocolBalancePromise) {
-      this._protocolBalancePromise = walletState.connector.publicKey
+      this._protocolBalancePromise = walletState.connector?.publicKey
         .then((publicKey) => fetch(`/api/depositAddress?pub=${publicKey}`))
         .then((res) => {
           if (res.status != 200)
@@ -91,9 +91,9 @@ class WalletState extends State {
   }
 
   private _connector?: Wallet
-  get connector(): Wallet {
+  get connector(): Wallet | undefined {
     if (!this._connector && this.wallet) this.useWallet(this.wallet)
-    return this._connector!
+    return this._connector
   }
 
   protected onAccountChanged = (accounts: string[]) => {

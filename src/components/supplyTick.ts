@@ -40,7 +40,7 @@ export class SupplyTickPanel extends LitElement {
   private async addSupply() {
     this.adding = true
     try {
-      const addr = await fetch(`/api/depositAddress?pub=${await walletState.connector.publicKey}`)
+      const addr = await fetch(`/api/depositAddress?pub=${await walletState.connector!.publicKey}`)
         .then((res) => {
           if (res.status != 200)
             return res.json().then((json) => {

@@ -38,7 +38,7 @@ export class SupplyPanel extends LitElement {
   private async addSupply() {
     this.adding = true
     try {
-      const addr = await fetch(`/api/depositAddress?pub=${await walletState.connector.publicKey}`)
+      const addr = await fetch(`/api/depositAddress?pub=${await walletState.connector!.publicKey}`)
         .then((res) => {
           if (res.status != 200)
             return res.json().then((json) => {
@@ -48,7 +48,7 @@ export class SupplyPanel extends LitElement {
         })
         .then((js) => js.address)
       console.log(addr, this.input.value!.valueAsNumber * 1e8)
-      const tx = await walletState.connector.sendBitcoin(addr, this.input.value!.valueAsNumber * 1e8)
+      const tx = await walletState.connector!.sendBitcoin(addr, this.input.value!.valueAsNumber * 1e8)
       this.alertMessage = unsafeHTML(
         `Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`
       )
