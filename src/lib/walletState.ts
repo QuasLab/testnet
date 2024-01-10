@@ -79,14 +79,14 @@ class WalletState extends State {
 
   // @property({ type: Object }) private _collateralBalance?: any[]
   @property({ value: 0 }) _collateralBalance = 0
-  private _collateralBalancePromise?: any
+  // private _collateralBalancePromise?: any
   public get collateralBalance(): number {
     return this._collateralBalance
   }
 
   // @property({ type: Object }) private _collateralBalance?: any[]
   @property({ value: 0 }) _borrowedBalance = 0
-  private _borrowedBalancePromise?: any
+  // private _borrowedBalancePromise?: any
   public get borrowedBalance(): number {
     return this._borrowedBalance
   }

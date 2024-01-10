@@ -88,7 +88,7 @@ export class AppMain extends LitElement {
     this.supplyTickPanel.value?.show()
   }
 
-  withdrawTick(tick: string) {
+  withdrawTick(_: string) {
     walletState._collateralBalance = 0
   }
 
