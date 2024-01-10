@@ -1,6 +1,5 @@
 import path from 'path'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
-import vercel from 'vite-plugin-vercel'
 
 /** @type {import('vite').UserConfig} */
 export default {
@@ -9,7 +8,6 @@ export default {
     modules: { generateScopedName: '[hash:base64:6]' }
   },
   plugins: [
-    // vercel(),
     viteStaticCopy({
       targets: [
         {

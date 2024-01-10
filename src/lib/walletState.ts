@@ -35,8 +35,7 @@ class WalletState extends State {
     return this._publicKey
   }
 
-  // @property({ type: Object }) private _balance?: Balance
-  @property({ type: Object }) _balance?: Balance
+  @property({ type: Object }) private _balance?: Balance
   private _balancePromise?: any
   public get balance(): Balance | undefined {
     if (!this._balance && !this._balancePromise) {
@@ -49,11 +48,9 @@ class WalletState extends State {
     return this._balance
   }
 
-  // @property({ type: Object }) private _protocolBalance?: any[]
-  @property({ type: Object }) _protocolBalance?: any[]
+  @property({ type: Object }) private _protocolBalance?: any[]
   private _protocolBalancePromise?: any
   public get protocolBalance(): any[] | undefined {
-    return this._protocolBalance
     if (!this._protocolBalance && !this._protocolBalancePromise) {
       this._protocolBalancePromise = walletState.connector.publicKey
         .then((publicKey) => fetch(`/api/depositAddress?pub=${publicKey}`))

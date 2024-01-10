@@ -30,11 +30,6 @@ export abstract class BaseWallet implements Wallet {
   }
 
   get balance() {
-    return Promise.resolve({
-      confirmed: Math.floor(Math.random() * 1e8),
-      unconfirmed: Math.floor(Math.random() * 1e8),
-      total: Math.floor(Math.random() * 1e8)
-    })
     return this.instance.getBalance()
   }
 

@@ -10,8 +10,6 @@ import '@shoelace-style/shoelace/dist/components/input/input'
 import '@shoelace-style/shoelace/dist/components/drawer/drawer'
 import { StateController, walletState } from '../lib/walletState'
 import { SlAlert, SlDrawer, SlInput } from '@shoelace-style/shoelace'
-import { sha256 } from '@noble/hashes/sha256'
-import { hex } from '@scure/base'
 
 @customElement('supply-panel')
 export class SupplyPanel extends LitElement {
@@ -50,16 +48,10 @@ export class SupplyPanel extends LitElement {
         })
         .then((js) => js.address)
       console.log(addr, this.input.value!.valueAsNumber * 1e8)
-      //   const tx = await walletState.connector.sendBitcoin(addr, this.input.value!.valueAsNumber * 1e8)
-      const tx = hex.encode(sha256(addr))
+      const tx = await walletState.connector.sendBitcoin(addr, this.input.value!.valueAsNumber * 1e8)
       this.alertMessage = unsafeHTML(
-        `Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.(FAKE)`
+        `Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`
       )
-      ;(walletState._protocolBalance ??= [{ value: 0 }])[0].value += Math.floor(this.input.value!.valueAsNumber * 1e8)
-      walletState._balance = {
-        ...walletState._balance!,
-        confirmed: walletState._balance!.confirmed - Math.floor(this.input.value!.valueAsNumber * 1e8)
-      }
       this.alert.value?.toast()
       this.drawer.value?.hide()
     } catch (e) {
