@@ -1,6 +1,7 @@
 import { State, property, storage } from '@lit-app/state'
 import { Balance, Wallet, WalletType } from './wallets'
 import { UniSat } from './wallets/unisat'
+import { OKX } from './wallets/okx'
 
 export { StateController } from '@lit-app/state'
 
@@ -11,11 +12,12 @@ class WalletState extends State {
   private _addressPromise?: any
   public get address(): string | undefined {
     if (!this._address && !this._addressPromise) {
-      this._addressPromise = this.connector?.accounts
-        .then((accounts) => {
-          this._address = accounts[0]
-        })
-        .finally(() => (this._addressPromise = undefined))
+      if (this.connector.installed)
+        this._addressPromise = this.connector?.accounts
+          .then((accounts) => {
+            this._address = accounts[0]
+          })
+          .finally(() => (this._addressPromise = undefined))
     }
     return this._address
   }
@@ -113,6 +115,9 @@ class WalletState extends State {
     switch (type) {
       case 'unisat':
         this._connector = new UniSat()
+        break
+      case 'okx':
+        this._connector = new OKX()
         break
       default:
         throw new Error(`unsupported wallet type: ${type}`)

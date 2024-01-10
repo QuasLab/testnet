@@ -48,8 +48,9 @@ export class ConnectButton extends LitElement {
       if (res != 'testnet') await walletState.connector.switchNetwork('testnet')
     } catch (e) {
       console.warn(e)
-      this.alertMessage = 'Failed to switch to testnet'
+      this.alertMessage = 'Failed to switch to testnet, ' + e
       this.alert.value?.toast()
+      this.connectingWallet = undefined
       return
     }
     try {
