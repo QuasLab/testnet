@@ -1,4 +1,4 @@
-import { State, property, storage, StateEvent } from '@lit-app/state'
+import { State, property, storage } from '@lit-app/state'
 import { Balance, Wallet, WalletType } from './wallets'
 import { UniSat } from './wallets/unisat'
 

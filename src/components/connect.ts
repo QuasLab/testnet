@@ -1,4 +1,4 @@
-import { LitElement, PropertyValueMap, html, unsafeCSS } from 'lit'
+import { LitElement, html, unsafeCSS } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { Ref, createRef, ref } from 'lit/directives/ref.js'
 import { when } from 'lit/directives/when.js'
