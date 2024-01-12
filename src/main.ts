@@ -2,6 +2,7 @@ import { LitElement, html, unsafeCSS } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { Ref, createRef, ref } from 'lit/directives/ref.js'
 import { when } from 'lit/directives/when.js'
+import { map } from 'lit/directives/map.js'
 import baseStyle from './base.css?inline'
 import style from './main.css?inline'
 import './global.css'
@@ -17,11 +18,13 @@ import './components/connect'
 import './components/repay'
 import './components/supply'
 import './components/supplyTick'
+import './components/tick'
 import { SupplyPanel } from './components/supply'
-import { StateController, walletState } from './lib/walletState'
+import { walletState } from './lib/walletState'
 import { SupplyTickPanel } from './components/supplyTick'
 import { BorrowPanel } from './components/borrow'
 import { RepayPanel } from './components/repay'
+import { toast } from './lib/toast'
 
 setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/')
 
@@ -43,18 +46,14 @@ globalThis.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',
 @customElement('app-main')
 export class AppMain extends LitElement {
   static styles = [unsafeCSS(baseStyle), unsafeCSS(style)]
-  @state() priceOrdi?: string
-  @state() priceSats?: string
+  @state() balanceOrdi?: string
+  @state() balanceSats?: string
   @state() supplyPanel: Ref<SupplyPanel> = createRef<SupplyPanel>()
   @state() supplyTickPanel: Ref<SupplyTickPanel> = createRef<SupplyTickPanel>()
   @state() borrowPanel: Ref<BorrowPanel> = createRef<BorrowPanel>()
   @state() repayPanel: Ref<RepayPanel> = createRef<RepayPanel>()
   @state() withdrawing = false
-  @state() minting = ''
-
-  get walletBalance() {
-    return walletState.balance?.confirmed ?? 0
-  }
+  @state() walletBalance = 0
 
   get protocolBalance() {
     const utxos = walletState.protocolBalance
@@ -65,21 +64,9 @@ export class AppMain extends LitElement {
 
   constructor() {
     super()
-    new StateController(this, walletState)
-  }
-
-  connectedCallback(): void {
-    super.connectedCallback()
-    fetch('/api/collections?slug=ordi')
-      .then((res) => res.json())
-      .then((res) => {
-        this.priceOrdi = res?.data?.data?.[0]?.floorPrice
-      })
-    fetch('/api/collections?slug=sats')
-      .then((res) => res.json())
-      .then((res) => {
-        this.priceSats = res?.data?.data?.[0]?.floorPrice
-      })
+    walletState.subscribe(() => {
+      this.walletBalance = walletState.balance?.confirmed ?? 0
+    })
     walletState.connector?.getInscriptions().then(console.log)
   }
 
@@ -136,50 +123,6 @@ export class AppMain extends LitElement {
     )
   }
 
-  mint(tick: string) {
-    this.minting = tick
-    Promise.all([walletState.connector!.publicKey, walletState.connector?.accounts])
-      .then(async ([publicKey, accounts]) => {
-        var res = await fetch(`/api/mintBrc20?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}`).then((res) => {
-          if (res.status != 200)
-            return res.json().then((json) => {
-              throw new Error(json.message)
-            })
-          return res.json()
-        })
-        if (!res.address) {
-          console.warn('deploy address not returned', res)
-          return
-        }
-        const txid = await walletState.connector?.sendBitcoin(res.address, 1000)
-        var res = await fetch(
-          `/api/mintBrc20?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}&txid=${txid}`
-        ).then((res) => {
-          if (res.status != 200)
-            return res.json().then((json) => {
-              throw new Error(json.message)
-            })
-          return res.json()
-        })
-        if (!res.psbt) {
-          console.warn('reveal tx not generated', res)
-          return
-        }
-        await walletState.connector
-          ?.signPsbt(res.psbt, {
-            autoFinalized: true,
-            toSignInputs: [{ index: 0, publicKey, disableTweakSigner: true }]
-          })
-          .then(
-            (hex) =>
-              walletState.connector?.pushPsbt(hex).then((id) => {
-                console.log(id)
-              })
-          )
-      })
-      .finally(() => (this.minting = ''))
-  }
-
   async withdraw() {
     this.withdrawing = true
     fetch(`/api/withdraw?pub=${await walletState.connector!.publicKey}&address=${walletState.address}`)
@@ -190,11 +133,13 @@ export class AppMain extends LitElement {
           })
         return res.json()
       })
-      .then((res) => {
-        this.priceSats = res?.data?.data?.[0]?.floorPrice
+      .then((txid) => {
+        toast(`Withdraw transaction <a href="https://mempool.space/testnet/tx/${txid}">${txid}</a> sent to network.`)
+      })
+      .catch((e) => {
+        toast(e)
       })
       .finally(() => (this.withdrawing = false))
-    this.withdrawing = false
   }
 
   async borrow() {
@@ -323,66 +268,16 @@ export class AppMain extends LitElement {
             <div class="relative panel !rounded-none">
               <ul>
                 <li class="text-xs mb-3">Tick</li>
-                <li class="py-4 flex items-center">
-                  <span class="brc20-icon" style="background-image:url(brc20-ordi.png)"></span>
-                  <div class="ml-3 flex-auto">
-                    <p class="text-sm"><a href="https://testnet.unisat.io/brc20/ordQ" target="_blank">ordi</a></p>
-                    <p class="text-xs text-sl-neutral-600">${this.formatPrice(this.priceOrdi)} sats</p>
-                  </div>
-                  <div class="space-x-2">
-                    <sl-tooltip content="Mint">
-                      <sl-button
-                        variant="text"
-                        circle
-                        ?loading=${this.minting == 'ordQ'}
-                        @click=${() => this.mint('ordQ')}
-                      >
-                        <sl-icon name="fingerprint" class="text-2xl"></sl-icon>
-                      </sl-button>
-                    </sl-tooltip>
-                    <sl-button variant="default" circle @click=${() => this.supplyTick('ordi')}>
-                      <sl-icon name="plus"></sl-icon>
-                    </sl-button>
-                    <sl-button
-                      variant="default"
-                      circle
-                      ?disabled=${walletState.collateralBalance <= 0}
-                      @click=${() => this.withdrawTick('ordi')}
-                    >
-                      <sl-icon name="dash"></sl-icon>
-                    </sl-button>
-                  </div>
-                </li>
-                <li class="py-4 flex items-center">
-                  <span class="brc20-icon" style="background-image:url(brc20-sats.png)"></span>
-                  <div class="ml-3 flex-auto">
-                    <p class="text-sm"><a href="https://testnet.unisat.io/brc20/satQ" target="_blank">sats</a></p>
-                    <p class="text-xs text-sl-neutral-600">${this.formatPrice(this.priceSats)} sats</p>
-                  </div>
-                  <div class="space-x-2">
-                    <sl-tooltip content="Mint">
-                      <sl-button
-                        variant="text"
-                        circle
-                        ?loading=${this.minting == 'satQ'}
-                        @click=${() => this.mint('satQ')}
-                      >
-                        <sl-icon name="fingerprint" class="text-2xl"></sl-icon>
-                      </sl-button>
-                    </sl-tooltip>
-                    <sl-button variant="default" circle @click=${() => this.supplyTick('sats')}>
-                      <sl-icon name="plus"></sl-icon>
-                    </sl-button>
-                    <sl-button
-                      variant="default"
-                      circle
-                      ?disabled=${walletState.collateralBalance <= 0}
-                      @click=${() => this.withdrawTick('sats')}
-                    >
-                      <sl-icon name="dash"></sl-icon>
-                    </sl-button>
-                  </div>
-                </li>
+                ${map(['ordi', 'sats'], (tick) => {
+                  return html`<li>
+                    <tick-row
+                      class="py-4 flex items-center"
+                      .tick=${tick}
+                      @supply=${() => this.supplyTick(tick)}
+                      @withdraw=${() => this.withdrawTick(tick)}
+                    ></tick-row>
+                  </li>`
+                })}
               </ul>
               <supply-tick-panel ${ref(this.supplyTickPanel)}></supply-tick-panel>
             </div>

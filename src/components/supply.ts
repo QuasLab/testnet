@@ -1,15 +1,14 @@
 import { LitElement, html, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { Ref, createRef, ref } from 'lit/directives/ref.js'
-import { unsafeHTML } from 'lit/directives/unsafe-html.js'
 import baseStyle from '/src/base.css?inline'
 import style from './supply.css?inline'
-import '@shoelace-style/shoelace/dist/components/alert/alert'
 import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/input/input'
 import '@shoelace-style/shoelace/dist/components/drawer/drawer'
 import { StateController, walletState } from '../lib/walletState'
-import { SlAlert, SlDrawer, SlInput } from '@shoelace-style/shoelace'
+import { SlDrawer, SlInput } from '@shoelace-style/shoelace'
+import { toast } from '../lib/toast'
 
 @customElement('supply-panel')
 export class SupplyPanel extends LitElement {
@@ -17,10 +16,8 @@ export class SupplyPanel extends LitElement {
   @property() coin = 'Bitcoin'
   @state() drawer: Ref<SlDrawer> = createRef<SlDrawer>()
   @state() input: Ref<SlInput> = createRef<SlInput>()
-  @state() alert: Ref<SlAlert> = createRef<SlAlert>()
   @state() inputValue = 0
   @state() adding = false
-  @state() alertMessage: any
 
   get walletBalance() {
     return walletState.balance?.confirmed ?? 0
@@ -49,15 +46,11 @@ export class SupplyPanel extends LitElement {
         .then((js) => js.address)
       console.log(addr, this.input.value!.valueAsNumber * 1e8)
       const tx = await walletState.connector!.sendBitcoin(addr, this.input.value!.valueAsNumber * 1e8)
-      this.alertMessage = unsafeHTML(
-        `Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`
-      )
-      this.alert.value?.toast()
+      toast(`Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`)
       this.drawer.value?.hide()
     } catch (e) {
       console.warn(e)
-      this.alertMessage = e
-      this.alert.value?.toast()
+      toast(e)
     }
     this.adding = false
   }
@@ -112,19 +105,6 @@ export class SupplyPanel extends LitElement {
           >
         </div>
       </sl-drawer>
-
-      <sl-alert
-        variant=${this.alertMessage instanceof Error ? 'danger' : 'warning'}
-        duration="3000"
-        closable
-        ${ref(this.alert)}
-      >
-        <sl-icon
-          slot="icon"
-          name=${this.alertMessage instanceof Error ? 'exclamation-octagon' : 'info-circle'}
-        ></sl-icon>
-        ${this.alertMessage?.message ?? this.alertMessage}
-      </sl-alert>
     `
   }
 }

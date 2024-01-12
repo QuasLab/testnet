@@ -71,7 +71,7 @@ export class ConnectButton extends LitElement {
   }
 
   async updateBalance() {
-    const response = await fetch(`https://ord.testnet.fans3.org/api/v1/brc20/address/${walletState.address}/balance`)
+    const response = await fetch(`${import.meta.env.ORD_BASE_URL}/api/v1/brc20/address/${walletState.address}/balance`)
     const result = await response.json()
     const balance = result.data?.balance
     if (Array.isArray(balance)) this.ticks = balance.length

@@ -1,0 +1,3 @@
+.brc20-icon {
+  @apply w-9 h-9 inline-block bg-contain bg-center bg-no-repeat flex-none;
+}
