@@ -67,7 +67,6 @@ export class AppMain extends LitElement {
     walletState.subscribe(() => {
       this.walletBalance = walletState.balance?.confirmed ?? 0
     })
-    walletState.connector?.getInscriptions().then(console.log)
   }
 
   supply() {
