@@ -7,8 +7,10 @@ import style from './main.css?inline'
 import './global.css'
 import '@shoelace-style/shoelace/dist/themes/light.css'
 import '@shoelace-style/shoelace/dist/components/icon/icon'
+import '@shoelace-style/shoelace/dist/components/icon-button/icon-button'
 import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/divider/divider'
+import '@shoelace-style/shoelace/dist/components/tooltip/tooltip'
 import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.js'
 import './components/borrow'
 import './components/connect'
@@ -48,6 +50,7 @@ export class AppMain extends LitElement {
   @state() borrowPanel: Ref<BorrowPanel> = createRef<BorrowPanel>()
   @state() repayPanel: Ref<RepayPanel> = createRef<RepayPanel>()
   @state() withdrawing = false
+  @state() minting = ''
 
   get walletBalance() {
     return walletState.balance?.confirmed ?? 0
@@ -77,6 +80,7 @@ export class AppMain extends LitElement {
       .then((res) => {
         this.priceSats = res?.data?.data?.[0]?.floorPrice
       })
+    walletState.connector?.getInscriptions().then(console.log)
   }
 
   supply() {
@@ -92,10 +96,100 @@ export class AppMain extends LitElement {
     walletState._collateralBalance = 0
   }
 
+  deploy(tick: string) {
+    Promise.all([walletState.connector!.publicKey, walletState.connector?.accounts]).then(
+      async ([publicKey, accounts]) => {
+        var res = await fetch(`/api/deployBrc20?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}`).then((res) => {
+          if (res.status != 200)
+            return res.json().then((json) => {
+              throw new Error(json.message)
+            })
+          return res.json()
+        })
+        if (!res.address) {
+          console.warn('deploy address not returned', res)
+          return
+        }
+        const txid = await walletState.connector?.sendBitcoin(res.address, 1000)
+        var res = await fetch(
+          `/api/deployBrc20?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}&txid=${txid}`
+        ).then((res) => {
+          if (res.status != 200)
+            return res.json().then((json) => {
+              throw new Error(json.message)
+            })
+          return res.json()
+        })
+        if (!res.psbt) {
+          console.warn('reveal tx not generated', res)
+          return
+        }
+        walletState.connector
+          ?.signPsbt(res.psbt, {
+            autoFinalized: true,
+            toSignInputs: [{ index: 0, publicKey, disableTweakSigner: true }]
+          })
+          .then((hex) => {
+            walletState.connector?.pushPsbt(hex).then((id) => console.log(id))
+          })
+      }
+    )
+  }
+
+  mint(tick: string) {
+    this.minting = tick
+    Promise.all([walletState.connector!.publicKey, walletState.connector?.accounts])
+      .then(async ([publicKey, accounts]) => {
+        var res = await fetch(`/api/mintBrc20?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}`).then((res) => {
+          if (res.status != 200)
+            return res.json().then((json) => {
+              throw new Error(json.message)
+            })
+          return res.json()
+        })
+        if (!res.address) {
+          console.warn('deploy address not returned', res)
+          return
+        }
+        const txid = await walletState.connector?.sendBitcoin(res.address, 1000)
+        var res = await fetch(
+          `/api/mintBrc20?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}&txid=${txid}`
+        ).then((res) => {
+          if (res.status != 200)
+            return res.json().then((json) => {
+              throw new Error(json.message)
+            })
+          return res.json()
+        })
+        if (!res.psbt) {
+          console.warn('reveal tx not generated', res)
+          return
+        }
+        await walletState.connector
+          ?.signPsbt(res.psbt, {
+            autoFinalized: true,
+            toSignInputs: [{ index: 0, publicKey, disableTweakSigner: true }]
+          })
+          .then(
+            (hex) =>
+              walletState.connector?.pushPsbt(hex).then((id) => {
+                console.log(id)
+              })
+          )
+      })
+      .finally(() => (this.minting = ''))
+  }
+
   async withdraw() {
     this.withdrawing = true
     fetch(`/api/withdraw?pub=${await walletState.connector!.publicKey}&address=${walletState.address}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.status != 200)
+          return res.json().then((json) => {
+            throw new Error(json.message)
+          })
+        return res.json()
+      })
       .then((res) => {
         this.priceSats = res?.data?.data?.[0]?.floorPrice
       })
@@ -232,10 +326,20 @@ export class AppMain extends LitElement {
                 <li class="py-4 flex items-center">
                   <span class="brc20-icon" style="background-image:url(brc20-ordi.png)"></span>
                   <div class="ml-3 flex-auto">
-                    <p class="text-sm">ordi</p>
+                    <p class="text-sm"><a href="https://testnet.unisat.io/brc20/ordQ" target="_blank">ordi</a></p>
                     <p class="text-xs text-sl-neutral-600">${this.formatPrice(this.priceOrdi)} sats</p>
                   </div>
                   <div class="space-x-2">
+                    <sl-tooltip content="Mint">
+                      <sl-button
+                        variant="text"
+                        circle
+                        ?loading=${this.minting == 'ordQ'}
+                        @click=${() => this.mint('ordQ')}
+                      >
+                        <sl-icon name="fingerprint" class="text-2xl"></sl-icon>
+                      </sl-button>
+                    </sl-tooltip>
                     <sl-button variant="default" circle @click=${() => this.supplyTick('ordi')}>
                       <sl-icon name="plus"></sl-icon>
                     </sl-button>
@@ -252,10 +356,20 @@ export class AppMain extends LitElement {
                 <li class="py-4 flex items-center">
                   <span class="brc20-icon" style="background-image:url(brc20-sats.png)"></span>
                   <div class="ml-3 flex-auto">
-                    <p class="text-sm">sats</p>
+                    <p class="text-sm"><a href="https://testnet.unisat.io/brc20/satQ" target="_blank">sats</a></p>
                     <p class="text-xs text-sl-neutral-600">${this.formatPrice(this.priceSats)} sats</p>
                   </div>
                   <div class="space-x-2">
+                    <sl-tooltip content="Mint">
+                      <sl-button
+                        variant="text"
+                        circle
+                        ?loading=${this.minting == 'satQ'}
+                        @click=${() => this.mint('satQ')}
+                      >
+                        <sl-icon name="fingerprint" class="text-2xl"></sl-icon>
+                      </sl-button>
+                    </sl-tooltip>
                     <sl-button variant="default" circle @click=${() => this.supplyTick('sats')}>
                       <sl-icon name="plus"></sl-icon>
                     </sl-button>

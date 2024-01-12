@@ -1,4 +1,4 @@
-import { Network, Wallet, WalletEvent } from '.'
+import { Inscription, Network, SignPsbtOptions, Wallet, WalletEvent } from '.'
 
 export abstract class BaseWallet implements Wallet {
   protected get instance(): any {
@@ -43,5 +43,25 @@ export abstract class BaseWallet implements Wallet {
 
   sendBitcoin(toAddress: string, satoshis: number, options?: { feeRate: number }): Promise<string> {
     return this.instance.sendBitcoin(toAddress, satoshis, options)
+  }
+
+  getInscriptions(cursor?: number, size?: number): Promise<{ total: number; list: Inscription[] }> {
+    return this.instance.getInscriptions(cursor, size)
+  }
+
+  sendInscription(toAddress: string, inscriptionId: string, options?: { feeRate: number }): Promise<string> {
+    return this.instance.sendInscription(toAddress, inscriptionId, options)
+  }
+
+  signPsbt(psbtHex: string, options?: SignPsbtOptions): Promise<string> {
+    return this.instance.signPsbt(psbtHex, options)
+  }
+
+  signPsbts(psbtHexs: string[], options?: SignPsbtOptions): Promise<string[]> {
+    return this.instance.signPsbts(psbtHexs, options)
+  }
+
+  pushPsbt(psbtHex: string): Promise<string> {
+    return this.instance.pushPsbt(psbtHex)
   }
 }
