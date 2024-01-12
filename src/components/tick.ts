@@ -60,7 +60,7 @@ export class TickRow extends LitElement {
   }
 
   mint() {
-    const tick = this.tick!
+    const tick = this.tickQ!
     this.minting = true
     Promise.all([walletState.connector!.publicKey, walletState.connector?.accounts])
       .then(async ([publicKey, accounts]) => {
@@ -127,9 +127,9 @@ export class TickRow extends LitElement {
         </p>
       </div>
       <div class="space-x-2">
-        <sl-tooltip content="Mint">
+        <sl-tooltip content="Mint" class="flex-auto">
           <sl-button variant="text" circle ?loading=${this.minting} @click=${() => this.mint()}>
-            <sl-icon name="fingerprint" class="text-2xl"></sl-icon>
+            <sl-icon name="lightning-charge" class="text-xl"></sl-icon>
           </sl-button>
         </sl-tooltip>
         <sl-button
