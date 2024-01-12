@@ -1,27 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import * as btc from '@scure/btc-signer'
-import { hex } from '@scure/base'
-import { HDKey } from '@scure/bip32'
 import { schnorr, secp256k1 } from '@noble/curves/secp256k1'
 import * as bitcoin from 'bitcoinjs-lib'
-import { Taptree } from 'bitcoinjs-lib/src/types'
+import * as btc from '@scure/btc-signer'
+import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341.js'
 import * as ecc from 'tiny-secp256k1'
 import { BIP32Factory } from 'bip32'
+import { getScriptTree, hdKey } from '../api_lib/scriptTree.js'
 
 bitcoin.initEccLib(ecc)
 const bip32 = BIP32Factory(ecc)
 
+const toXOnly = (pubKey: any) => (pubKey.length === 32 ? pubKey : pubKey.slice(1, 33))
+
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (!process.env.BITCOIN_KEY) throw new Error('BITCOIN_KEY is not configured')
 
-  const hdKey = HDKey.fromMasterSeed(hex.decode(process.env.BITCOIN_KEY ?? ''))
   const hdKey2 = bip32.fromSeed(Buffer.from(process.env.BITCOIN_KEY ?? '', 'hex'))
-  var keys: HDKey[] = []
-  var schnorrKeys: Uint8Array[] = []
-  for (var i = 0; i < 3; i++) {
-    keys[i] = hdKey.deriveChild(i)
-    schnorrKeys[i] = schnorr.getPublicKey(keys[i].privateKey!)
-  }
 
   try {
     const pubKey = request.query['pub'] as string
@@ -31,65 +25,95 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const Point = secp256k1.ProjectivePoint
     const userPoint = Point.fromHex(pubKey).multiply(secp256k1.utils.normPrivateKeyToScalar(hdKey.privateKey!))
     const userSchnorrKey = schnorr.getPublicKey(userPoint.toRawBytes().slice(1))
-
-    const script = btc.p2tr(userSchnorrKey, btc.p2tr_ns(2, schnorrKeys), btc.TEST_NETWORK)
-
-    const scriptTree: Taptree = [
-      [{ output: Buffer.from(script.leaves![0].script) }, { output: Buffer.from(script.leaves![1].script) }],
-      { output: Buffer.from(script.leaves![2].script) }
-    ]
-    // const redeem = {
-    //   output: leafScript,
-    //   redeemVersion: LEAF_VERSION_TAPSCRIPT
-    // }
+    const scriptTree = getScriptTree()
+    const redeem = {
+      output: Buffer.from(
+        btc.Script.encode([
+          toXOnly(hdKey2.derive(0).publicKey),
+          'CHECKSIGVERIFY',
+          toXOnly(hdKey2.derive(1).publicKey),
+          'CHECKSIG',
+          'OP_0',
+          'IF',
+          Buffer.from('ord'),
+          Buffer.from('01', 'hex'),
+          Buffer.from('text/plain;charset=utf-8'),
+          'OP_0',
+          Buffer.from('{p:"quas",op:"withdraw"}'),
+          'ENDIF'
+        ])
+      ),
+      redeemVersion: LEAF_VERSION_TAPSCRIPT
+    }
     const p2tr = bitcoin.payments.p2tr({
       internalPubkey: Buffer.from(userSchnorrKey),
       scriptTree,
+      redeem,
       network: bitcoin.networks.testnet
     })
+    var value = 0
+    const utxos: [] = await fetch(`https://mempool.space/testnet/api/address/${p2tr.address}/utxo`)
+      .then((res) => res.json())
+      .then((utxos) =>
+        utxos.map((utxo: any) => {
+          value += utxo.value
+          return {
+            hash: Buffer.from(utxo.txid, 'hex').reverse(),
+            index: utxo.vout,
+            witnessUtxo: { value: utxo.value, script: p2tr.output! },
+            tapLeafScript: [
+              {
+                leafVersion: redeem.redeemVersion!,
+                script: redeem.output,
+                controlBlock: p2tr.witness![p2tr.witness!.length - 1]
+              }
+            ]
+          }
+        })
+      )
+    if (utxos.length == 0) {
+      throw new Error('No UTXO can be found')
+    }
+    const psbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
+    utxos.forEach((utxo: any) => psbt.addInput(utxo))
+    psbt.addOutput({ address, value })
+    psbt.signInput(0, hdKey2.derive(0)).signInput(0, hdKey2.derive(1)).finalizeAllInputs()
 
-    console.log(p2tr.output?.toString('hex'), p2tr.address)
-
-    const utxos: [] = await fetch(`https://mempool.space/testnet/api/address/${script.address}/utxo`).then((res) =>
-      res.json()
+    const fastestFee = Math.max(
+      (await fetch('https://mempool.space/testnet/api/v1/fees/recommended').then((res) => res.json())).fastestFee,
+      2
     )
-    const utxos1: btc.TransactionInputUpdate[] = utxos.map((utxo: any) => {
-      return {
-        ...script,
-        // redeemScript: p2tr.redeem?.data,
-        txid: hex.decode(utxo.txid),
-        index: utxo.vout,
-        witnessUtxo: { script: script.script, amount: BigInt(utxo.value) }
-      }
-    })
 
-    const fee = await fetch('https://mempool.space/testnet/api/v1/fees/recommended').then((res) => res.json())
+    const newFee = psbt.extractTransaction(true).virtualSize() * fastestFee
+    var finalPsbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
+    finalPsbt.setMaximumFeeRate(fastestFee + 1)
+    utxos.forEach((utxo: any) => finalPsbt.addInput(utxo))
+    finalPsbt.addOutput({ address, value: value - newFee })
+    finalPsbt.signInput(0, hdKey2.derive(0)).signInput(0, hdKey2.derive(1)).finalizeAllInputs()
 
-    const selected = btc.selectUTXO(utxos1, [], 'default', {
-      changeAddress: address, // required, address to send change
-      feePerByte: BigInt(fee.fastestFee <= 1 ? 2 : fee.fastestFee), // require, fee per vbyte in satoshi
-      bip69: true, // lexicographical Indexing of Transaction Inputs and Outputs
-      createTx: true, // create tx with selected inputs/outputs
-      network: btc.TEST_NETWORK
-    })
-    if (!selected) throw new Error('Failed to select utxos')
-    const { tx } = selected
-    if (!tx) throw new Error('Failed to get tx for all utxos')
-    const psbt = bitcoin.Psbt.fromBuffer(Buffer.from(tx.toPSBT()))
-      .signInput(0, hdKey2.derive(0))
-      .signInput(0, hdKey2.derive(1))
-      .finalizeAllInputs()
-    const newTx = psbt.extractTransaction()
+    var finalTx = finalPsbt.extractTransaction()
 
-    console.log(hex.encode(tx.toBytes()), newTx.getHash().toString('hex'), newTx.toHex())
+    // console.log(finalTx.getHash().reverse().toString('hex'), finalTx.toHex())
+    // finalTx.ins.forEach((i) =>
+    //   console.log({
+    //     ...i,
+    //     hash: i.hash.toString('hex'),
+    //     script: i.script.toString('hex'),
+    //     scriptHash: p2tr.pubkey?.toString('hex'),
+    //     scriptAddress: p2tr.address,
+    //     witness: i.witness.map((w) => w.toString('hex'))
+    //   })
+    // )
+    // console.log(Buffer.from(btc.Transaction.fromRaw(finalTx.toBuffer()).getInput(0).txid!).toString('hex'))
+
     await fetch('https://mempool.space/testnet/api/tx', {
       method: 'POST',
-      body: newTx.toHex()
+      body: finalTx.toHex()
     }).then((res) => {
       if (res.status == 200) {
         res.text().then((text) => {
-          if (text.toLowerCase() != newTx.getHash().toString('hex').toLowerCase())
-            console.error('tx hash mismatch, ours', newTx.getHash().toString('hex'), 'got', text)
+          if (text.toLowerCase() != finalTx.getHash().reverse().toString('hex').toLowerCase())
+            console.error('tx hash mismatch, ours', finalTx.getHash().reverse().toString('hex'), 'got', text)
           response.status(200).send({ tx: text })
         })
       } else {
