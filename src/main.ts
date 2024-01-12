@@ -25,6 +25,7 @@ import { SupplyTickPanel } from './components/supplyTick'
 import { BorrowPanel } from './components/borrow'
 import { RepayPanel } from './components/repay'
 import { toast } from './lib/toast'
+import { getJson } from '../api_lib/fetch'
 
 setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/')
 
@@ -75,6 +76,11 @@ export class AppMain extends LitElement {
 
   supplyTick(tick: string) {
     this.supplyTickPanel.value!.tick = tick
+    this.supplyTickPanel.value!.max = 0n
+    walletState
+      .getBrc20Balance()
+      .then((balances) => balances.find((b) => b.tick == tick.replace(/.$/, 'Q')))
+      .then((b) => b && (this.supplyTickPanel.value!.max = BigInt(b.availableBalance)))
     this.supplyTickPanel.value?.show()
   }
 
@@ -85,27 +91,15 @@ export class AppMain extends LitElement {
   deploy(tick: string) {
     Promise.all([walletState.connector!.publicKey, walletState.connector?.accounts]).then(
       async ([publicKey, accounts]) => {
-        var res = await fetch(`/api/deployBrc20?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}`).then((res) => {
-          if (res.status != 200)
-            return res.json().then((json) => {
-              throw new Error(json.message)
-            })
-          return res.json()
-        })
+        var res = await fetch(`/api/brc20Deploy?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}`).then(getJson)
         if (!res.address) {
           console.warn('deploy address not returned', res)
           return
         }
         const txid = await walletState.connector?.sendBitcoin(res.address, 1000)
         var res = await fetch(
-          `/api/deployBrc20?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}&txid=${txid}`
-        ).then((res) => {
-          if (res.status != 200)
-            return res.json().then((json) => {
-              throw new Error(json.message)
-            })
-          return res.json()
-        })
+          `/api/brc20Deploy?tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}&txid=${txid}`
+        ).then(getJson)
         if (!res.psbt) {
           console.warn('reveal tx not generated', res)
           return

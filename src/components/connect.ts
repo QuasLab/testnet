@@ -16,6 +16,7 @@ import { SlAlert, SlDialog } from '@shoelace-style/shoelace'
 import { getAddressInfo } from 'bitcoin-address-validation'
 import { StateController, walletState } from '../lib/walletState'
 import { WalletNames, WalletType, WalletTypes } from '../lib/wallets'
+import { getJson } from '../../api_lib/fetch'
 
 @customElement('connect-button')
 export class ConnectButton extends LitElement {
@@ -71,10 +72,9 @@ export class ConnectButton extends LitElement {
   }
 
   async updateBalance() {
-    const response = await fetch(
+    const result = await fetch(
       `${import.meta.env.VITE_ORD_BASE_URL}/api/v1/brc20/address/${walletState.address}/balance`
-    )
-    const result = await response.json()
+    ).then(getJson)
     const balance = result.data?.balance
     if (Array.isArray(balance)) this.ticks = balance.length
   }

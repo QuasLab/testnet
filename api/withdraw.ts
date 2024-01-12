@@ -6,6 +6,7 @@ import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341.js'
 import * as ecc from 'tiny-secp256k1'
 import { BIP32Factory } from 'bip32'
 import { getScriptTree, hdKey } from '../api_lib/scriptTree.js'
+import { getJson } from '../api_lib/fetch.js'
 
 bitcoin.initEccLib(ecc)
 const bip32 = BIP32Factory(ecc)
@@ -53,7 +54,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     })
     var value = 0
     const utxos: [] = await fetch(`https://mempool.space/testnet/api/address/${p2tr.address}/utxo`)
-      .then((res) => res.json())
+      .then(getJson)
       .then((utxos) =>
         utxos.map((utxo: any) => {
           value += utxo.value
@@ -80,7 +81,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     psbt.signInput(0, hdKey2.derive(0)).signInput(0, hdKey2.derive(1)).finalizeAllInputs()
 
     const fastestFee = Math.max(
-      (await fetch('https://mempool.space/testnet/api/v1/fees/recommended').then((res) => res.json())).fastestFee,
+      (await fetch('https://mempool.space/testnet/api/v1/fees/recommended').then(getJson)).fastestFee,
       2
     )
 
@@ -126,10 +127,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
   } catch (err) {
     if (err instanceof Error) {
       console.log(err)
-      response.status(400).send({ message: err.message })
+      response.status(400).send(err.message)
     } else {
       console.error(err)
-      response.status(500).send({ message: 'unknown error' })
+      response.status(500).send('unknown error')
     }
     return
   }

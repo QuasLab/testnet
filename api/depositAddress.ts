@@ -37,10 +37,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
   } catch (err) {
     if (err instanceof Error) {
       console.log(err)
-      response.status(400).send({ message: err.message })
+      response.status(400).send(err.message)
     } else {
       console.error(err)
-      response.status(500).send({ message: 'unknown error' })
+      response.status(500).send('unknown error')
     }
     return
   }

@@ -9,6 +9,7 @@ import '@shoelace-style/shoelace/dist/components/drawer/drawer'
 import { StateController, walletState } from '../lib/walletState'
 import { SlDrawer, SlInput } from '@shoelace-style/shoelace'
 import { toast } from '../lib/toast'
+import { getJson } from '../../api_lib/fetch'
 
 @customElement('supply-panel')
 export class SupplyPanel extends LitElement {
@@ -36,13 +37,7 @@ export class SupplyPanel extends LitElement {
     this.adding = true
     try {
       const addr = await fetch(`/api/depositAddress?pub=${await walletState.connector!.publicKey}`)
-        .then((res) => {
-          if (res.status != 200)
-            return res.json().then((json) => {
-              throw new Error(json.message)
-            })
-          return res.json()
-        })
+        .then(getJson)
         .then((js) => js.address)
       console.log(addr, this.input.value!.valueAsNumber * 1e8)
       const tx = await walletState.connector!.sendBitcoin(addr, this.input.value!.valueAsNumber * 1e8)

@@ -31,7 +31,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
           Buffer.from('01', 'hex'),
           Buffer.from('text/plain;charset=utf-8'),
           'OP_0',
-          Buffer.from(`{"p":"brc-20","op":"mint","tick":"${tick}","amt":"1000"}`),
+          Buffer.from(`{"p":"brc-20","op":"deploy","tick":"${tick}","max":"21000000","lim":"1000"}`),
           'ENDIF'
         ])
       )
@@ -71,10 +71,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
   } catch (err) {
     if (err instanceof Error) {
       console.log(err)
-      response.status(400).send({ message: err.message })
+      response.status(400).send(err.message)
     } else {
       console.error(err)
-      response.status(500).send({ message: 'unknown error' })
+      response.status(500).send('unknown error')
     }
     return
   }

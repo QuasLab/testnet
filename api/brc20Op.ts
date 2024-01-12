@@ -13,13 +13,19 @@ export default async function handler(request: VercelRequest, response: VercelRe
   if (!process.env.BITCOIN_KEY) throw new Error('BITCOIN_KEY is not configured')
 
   try {
+    const op = request.query['op'] as string
+    if (!['mint', 'transfer'].includes(op)) throw new Error('op can only be mint or transfer')
     const pubKey = request.query['pub'] as string
     const address = request.query['address'] as string
     const tick = request.query['tick'] as string
+    const amt = request.query['amt'] as string
     if (!pubKey) throw new Error('missing public key')
     if (!address) throw new Error('missing output address')
     if (!tick) throw new Error('missing brc-20 tick')
+    if (!amt) throw new Error('missing brc-20 amt')
+
     const txid = request.query['txid'] as string
+    const brcJson = `{"p":"brc-20","op":"${op}","tick":"${tick}","amt":"${amt}"}`
     const scriptTree: Taptree = {
       output: Buffer.from(
         btc.Script.encode([
@@ -31,7 +37,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
           Buffer.from('01', 'hex'),
           Buffer.from('text/plain;charset=utf-8'),
           'OP_0',
-          Buffer.from(`{"p":"brc-20","op":"deploy","tick":"${tick}","max":"21000000","lim":"1000"}`),
+          Buffer.from(brcJson),
           'ENDIF'
         ])
       )
@@ -49,8 +55,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
       network: bitcoin.networks.testnet
     })
 
-    var value = 1000
     if (txid) {
+      var value = 699
       const psbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
       psbt.addInput({
         hash: Buffer.from(txid, 'hex').reverse(),
@@ -64,17 +70,17 @@ export default async function handler(request: VercelRequest, response: VercelRe
           }
         ]
       })
-      psbt.addOutput({ address, value: value - 160 })
+      psbt.addOutput({ address, value: value - 153 })
       console.log(psbt.toHex())
       response.status(200).send({ psbt: psbt.toHex() })
-    } else response.status(200).send({ address: p2tr.address })
+    } else response.status(200).send({ address: p2tr.address, data: brcJson })
   } catch (err) {
     if (err instanceof Error) {
       console.log(err)
-      response.status(400).send({ message: err.message })
+      response.status(400).send(err.message)
     } else {
       console.error(err)
-      response.status(500).send({ message: 'unknown error' })
+      response.status(500).send('unknown error')
     }
     return
   }

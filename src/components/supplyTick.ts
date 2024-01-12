@@ -1,36 +1,30 @@
 import { LitElement, html, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { Ref, createRef, ref } from 'lit/directives/ref.js'
-import { unsafeHTML } from 'lit/directives/unsafe-html.js'
 import baseStyle from '/src/base.css?inline'
 import style from './supplyTick.css?inline'
-import '@shoelace-style/shoelace/dist/components/alert/alert'
 import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/input/input'
 import '@shoelace-style/shoelace/dist/components/drawer/drawer'
-import { StateController, walletState } from '../lib/walletState'
-import { SlAlert, SlDrawer, SlInput } from '@shoelace-style/shoelace'
-import { sha256 } from '@noble/hashes/sha256'
-import { hex } from '@scure/base'
+import { walletState } from '../lib/walletState'
+import { SlDrawer, SlInput } from '@shoelace-style/shoelace'
+import { toast } from '../lib/toast'
+import { formatUnits } from '../lib/units'
+import { getJson } from '../../api_lib/fetch'
 
 @customElement('supply-tick-panel')
 export class SupplyTickPanel extends LitElement {
   static styles = [unsafeCSS(baseStyle), unsafeCSS(style)]
   @property() tick = ''
+  @property() max = 0n
+  @property() decimals = 18
   @state() drawer: Ref<SlDrawer> = createRef<SlDrawer>()
   @state() input: Ref<SlInput> = createRef<SlInput>()
-  @state() alert: Ref<SlAlert> = createRef<SlAlert>()
   @state() inputValue = 0
   @state() adding = false
-  @state() alertMessage: any
 
-  get walletBalance() {
-    return walletState.balance?.confirmed ?? 0
-  }
-
-  constructor() {
-    super()
-    new StateController(this, walletState)
+  get tickQ() {
+    return this.tick?.replace(/.$/, 'Q')
   }
 
   public show() {
@@ -39,31 +33,69 @@ export class SupplyTickPanel extends LitElement {
 
   private async addSupply() {
     this.adding = true
+    const amt = this.input.value?.valueAsNumber
+    var { alert } = toast(`Preparing inscribe transaction`, {
+      variant: 'primary',
+      duration: Infinity
+    })
     try {
-      const addr = await fetch(`/api/depositAddress?pub=${await walletState.connector!.publicKey}`)
-        .then((res) => {
-          if (res.status != 200)
-            return res.json().then((json) => {
-              throw new Error(json.message)
-            })
-          return res.json()
+      const publicKey = await walletState.connector!.publicKey
+      const depositAddress = await fetch(`/api/depositAddress?pub=${publicKey}`)
+        .then(getJson)
+        .then((res) => res.address)
+      const { data, address: brcAddress } = await fetch(
+        `/api/brc20Op?op=transfer&amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${depositAddress}`
+      ).then(getJson)
+
+      if (!depositAddress) throw new Error('failed to get deposit address')
+      if (!brcAddress) throw new Error('failed to get brc20 transfer inscription address')
+      await alert.hide()
+
+      alert = toast(`Inscribing <span style="white-space:pre">${data}</span>`, {
+        variant: 'primary',
+        duration: Infinity
+      }).alert
+      const txid = await walletState.connector?.sendBitcoin(brcAddress, 699)
+      await alert.hide()
+
+      alert = toast(`Preparing reveal transaction`, {
+        variant: 'primary',
+        duration: Infinity
+      }).alert
+      const res = await fetch(
+        `/api/brc20Op?op=transfer&amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${depositAddress}&txid=${txid}`
+      ).then(getJson)
+      if (!res.psbt) {
+        console.error('reveal tx not generated', res)
+        throw new Error('reveal tx not generated')
+      }
+      await alert.hide()
+
+      alert = toast(`Revealing <span style="white-space:pre">${data}</span>`, {
+        variant: 'primary',
+        duration: Infinity
+      }).alert
+      await walletState.connector
+        ?.signPsbt(res.psbt, {
+          autoFinalized: true,
+          toSignInputs: [{ index: 0, publicKey, disableTweakSigner: true }]
         })
-        .then((js) => js.address)
-      console.log(addr, this.input.value!.valueAsNumber * 1e8)
-      //   const tx = await walletState.connector.sendBitcoin(addr, this.input.value!.valueAsNumber * 1e8)
-      const tx = hex.encode(sha256(addr))
-      this.alertMessage = unsafeHTML(
-        `Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.(FAKE)`
-      )
-      this.alert.value?.toast()
-      this.drawer.value?.hide()
-      walletState._collateralBalance += this.input.value!.valueAsNumber
+        .then((hex) => walletState.connector?.pushPsbt(hex))
+        .then((id) => {
+          toast(
+            `Transfer transactions sent to network.<br>
+            Inscription: <a href="https://mempool.space/testnet/tx/${txid}">${txid}</a><br/>
+            Reveal: <a href="https://mempool.space/testnet/tx/${id}">${id}</a>`,
+            { duration: Infinity, closable: true, variant: 'primary' }
+          )
+          console.log(id)
+        })
     } catch (e) {
-      console.warn(e)
-      this.alertMessage = e
-      this.alert.value?.toast()
+      console.error(e)
+      toast(e)
     }
     this.adding = false
+    alert.hide()
   }
 
   render() {
@@ -82,19 +114,18 @@ export class SupplyTickPanel extends LitElement {
           <sl-button
             size="small"
             @click=${() => {
-              this.inputValue = this.walletBalance / 1e8
-              this.input.value!.value = this.inputValue.toString()
+              this.input.value!.value = formatUnits(this.max, this.decimals)
+              this.inputValue = this.input.value!.valueAsNumber
             }}
             pill
             >Max</sl-button
           >
         </div>
         <div class="flex text-xs items-center text-sl-neutral-600">
-          <span class="brc20-icon" style="background-image:url(brc20-${this.tick}.png)"></span>${Math.floor(
-            this.walletBalance / 1e8
-          )}.${Math.floor((this.walletBalance % 1e8) / 1e4)
-            .toString()
-            .padStart(4, '0')}
+          <span class="brc20-icon" style="background-image:url(brc20-${this.tick}.png)"></span>${formatUnits(
+            this.max,
+            this.decimals
+          )}
           Available
         </div>
         <div class="mt-4 space-y-2">
@@ -109,19 +140,6 @@ export class SupplyTickPanel extends LitElement {
           <sl-button class="w-full" @click=${() => this.drawer.value?.hide()} pill>Cancel</sl-button>
         </div>
       </sl-drawer>
-
-      <sl-alert
-        variant=${this.alertMessage instanceof Error ? 'danger' : 'warning'}
-        duration="3000"
-        closable
-        ${ref(this.alert)}
-      >
-        <sl-icon
-          slot="icon"
-          name=${this.alertMessage instanceof Error ? 'exclamation-octagon' : 'info-circle'}
-        ></sl-icon>
-        ${this.alertMessage?.message ?? this.alertMessage}
-      </sl-alert>
     `
   }
 }
