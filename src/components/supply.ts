@@ -9,7 +9,6 @@ import '@shoelace-style/shoelace/dist/components/drawer/drawer'
 import { StateController, walletState } from '../lib/walletState'
 import { SlDrawer, SlInput } from '@shoelace-style/shoelace'
 import { toast, toastImportant } from '../lib/toast'
-import { getJson } from '../../api_lib/fetch'
 
 @customElement('supply-panel')
 export class SupplyPanel extends LitElement {

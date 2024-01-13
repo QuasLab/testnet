@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { schnorr, secp256k1 } from '@noble/curves/secp256k1'
 import * as bitcoin from 'bitcoinjs-lib'
 // import * as btc from '@scure/btc-signer'
-import * as ecc from 'tiny-secp256k1'
+import ecc from '@bitcoinerlab/secp256k1'
 import { getScriptTree, hdKey } from '../api_lib/scriptTree.js'
 
 bitcoin.initEccLib(ecc)

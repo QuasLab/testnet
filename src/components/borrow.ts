@@ -9,6 +9,7 @@ import '@shoelace-style/shoelace/dist/components/dialog/dialog'
 import { StateController, walletState } from '../lib/walletState'
 import { SlDialog, SlInput } from '@shoelace-style/shoelace'
 import { toast } from '../lib/toast'
+import { formatUnits } from '../lib/units'
 
 @customElement('borrow-panel')
 export class BorrowPanel extends LitElement {
@@ -71,8 +72,8 @@ export class BorrowPanel extends LitElement {
           <sl-button
             size="small"
             @click=${() => {
-              this.inputValue = walletState._collateralBalance
-              this.input.value!.value = this.inputValue.toString()
+              this.input.value!.value = formatUnits(walletState.collateralBalance?.[0]?.availableBalance ?? '0', 18)
+              this.inputValue = this.input.value!.valueAsNumber
             }}
             pill
             >Max</sl-button
@@ -80,7 +81,7 @@ export class BorrowPanel extends LitElement {
         </div>
         <div class="flex text-xs items-center text-sl-neutral-600">
           <span class="brc20-icon" style="background-image:url(brc20-${this.tick}.png)"></span>Max to
-          ${walletState._collateralBalance}
+          ${formatUnits(walletState.collateralBalance?.[0]?.availableBalance ?? '0', 18)}
         </div>
         <div class="mt-4 space-y-2">
           <sl-button

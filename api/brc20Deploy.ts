@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import * as bitcoin from 'bitcoinjs-lib'
 import * as btc from '@scure/btc-signer'
-import * as ecc from 'tiny-secp256k1'
+import ecc from '@bitcoinerlab/secp256k1'
 import { Taptree } from 'bitcoinjs-lib/src/types.js'
 import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341.js'
 

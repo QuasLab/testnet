@@ -26,7 +26,7 @@ import { BorrowPanel } from './components/borrow'
 import { RepayPanel } from './components/repay'
 import { toast, toastImportant } from './lib/toast'
 import { getJson } from '../api_lib/fetch'
-import { formatUnits, parseUnits } from './lib/units'
+import { formatUnits } from './lib/units'
 
 setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/')
 
