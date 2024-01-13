@@ -31,13 +31,6 @@ export type Balance = {
   total: number
 }
 
-export type Brc20Balance = {
-  tick: string
-  availableBalance: string
-  transferableBalance: string
-  overallBalance: string
-}
-
 export type Inscription = {
   /** the id of inscription. */
   inscriptionId: string

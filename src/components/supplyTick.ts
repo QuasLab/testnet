@@ -8,7 +8,7 @@ import '@shoelace-style/shoelace/dist/components/input/input'
 import '@shoelace-style/shoelace/dist/components/drawer/drawer'
 import { walletState } from '../lib/walletState'
 import { SlDrawer, SlInput } from '@shoelace-style/shoelace'
-import { toast } from '../lib/toast'
+import { toast, toastImportant } from '../lib/toast'
 import { formatUnits } from '../lib/units'
 import { getJson } from '../../api_lib/fetch'
 
@@ -34,36 +34,24 @@ export class SupplyTickPanel extends LitElement {
   private async addSupply() {
     this.adding = true
     const amt = this.input.value?.valueAsNumber
-    var { alert } = toast(`Preparing inscribe transaction`, {
-      variant: 'primary',
-      duration: Infinity
-    })
+    var { alert } = toastImportant(`Preparing inscribe transaction`)
     try {
-      const publicKey = await walletState.connector!.publicKey
-      const depositAddress = await fetch(`/api/depositAddress?pub=${publicKey}`)
-        .then(getJson)
-        .then((res) => res.address)
-      const { data, address: brcAddress } = await fetch(
-        `/api/brc20Op?op=transfer&amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${depositAddress}`
+      const [publicKey, address] = await Promise.all([walletState.getPublicKey(), walletState.getAddress()])
+      const { data, address: inscribeAddress } = await fetch(
+        `/api/brc20Op?op=transfer&amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${address}`
       ).then(getJson)
 
-      if (!depositAddress) throw new Error('failed to get deposit address')
-      if (!brcAddress) throw new Error('failed to get brc20 transfer inscription address')
+      if (!address) throw new Error('failed to get deposit address')
+      if (!inscribeAddress) throw new Error('failed to get brc20 transfer inscription address')
       await alert.hide()
 
-      alert = toast(`Inscribing <span style="white-space:pre">${data}</span>`, {
-        variant: 'primary',
-        duration: Infinity
-      }).alert
-      const txid = await walletState.connector?.sendBitcoin(brcAddress, 699)
+      alert = toastImportant(`Inscribing <span style="white-space:pre">${data}</span>`).alert
+      const inscribeTx = await walletState.connector?.sendBitcoin(inscribeAddress, 699)
       await alert.hide()
 
-      alert = toast(`Preparing reveal transaction`, {
-        variant: 'primary',
-        duration: Infinity
-      }).alert
+      alert = toastImportant(`Preparing reveal transaction`).alert
       const res = await fetch(
-        `/api/brc20Op?op=transfer&amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${depositAddress}&txid=${txid}`
+        `/api/brc20Op?op=transfer&amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${address}&txid=${inscribeTx}`
       ).then(getJson)
       if (!res.psbt) {
         console.error('reveal tx not generated', res)
@@ -71,25 +59,31 @@ export class SupplyTickPanel extends LitElement {
       }
       await alert.hide()
 
-      alert = toast(`Revealing <span style="white-space:pre">${data}</span>`, {
-        variant: 'primary',
-        duration: Infinity
-      }).alert
-      await walletState.connector
+      alert = toastImportant(`Revealing <span style="white-space:pre">${data}</span>`).alert
+      const revealTx = await walletState.connector
         ?.signPsbt(res.psbt, {
           autoFinalized: true,
           toSignInputs: [{ index: 0, publicKey, disableTweakSigner: true }]
         })
         .then((hex) => walletState.connector?.pushPsbt(hex))
-        .then((id) => {
-          toast(
-            `Transfer transactions sent to network.<br>
-            Inscription: <a href="https://mempool.space/testnet/tx/${txid}">${txid}</a><br/>
-            Reveal: <a href="https://mempool.space/testnet/tx/${id}">${id}</a>`,
-            { duration: Infinity, closable: true, variant: 'primary' }
-          )
-          console.log(id)
-        })
+      await alert.hide()
+      alert = toastImportant(
+        `Transfer transactions sent to network.<br>
+            Inscription: <a href="https://mempool.space/testnet/tx/${inscribeTx}">${inscribeTx}</a><br/>
+            Reveal: <a href="https://mempool.space/testnet/tx/${revealTx}">${revealTx}</a><br/>
+            Now supply to protocol`
+      ).alert
+      const supplyTx = await walletState.connector?.sendInscription(
+        await walletState.getDepositAddress(),
+        `${revealTx}i0`
+      )
+      await alert.hide()
+      toastImportant(
+        `Transfer transactions sent to network.<br>
+            Inscription: <a href="https://mempool.space/testnet/tx/${inscribeTx}">${inscribeTx}</a><br/>
+            Reveal: <a href="https://mempool.space/testnet/tx/${revealTx}">${revealTx}</a><br/>
+            Supply: <a href="https://mempool.space/testnet/tx/${supplyTx}">${supplyTx}</a>`
+      )
     } catch (e) {
       console.error(e)
       toast(e)

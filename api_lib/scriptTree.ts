@@ -31,7 +31,7 @@ export function getScriptTree(): Taptree {
                 Buffer.from('01', 'hex'),
                 Buffer.from('text/plain;charset=utf-8'),
                 'OP_0',
-                Buffer.from('{p:"quas",op:"borrow"}'),
+                Buffer.from('{"p":"quas","op":"borrow"}'),
                 'ENDIF'
               ])
             )
@@ -49,7 +49,7 @@ export function getScriptTree(): Taptree {
                 Buffer.from('01', 'hex'),
                 Buffer.from('text/plain;charset=utf-8'),
                 'OP_0',
-                Buffer.from('{p:"quas",op:"borrow"}'),
+                Buffer.from('{"p":"quas","op":"borrow"}'),
                 'ENDIF'
               ])
             )
@@ -69,7 +69,7 @@ export function getScriptTree(): Taptree {
                 Buffer.from('01', 'hex'),
                 Buffer.from('text/plain;charset=utf-8'),
                 'OP_0',
-                Buffer.from('{p:"quas",op:"borrow"}'),
+                Buffer.from('{"p":"quas","op":"borrow"}'),
                 'ENDIF'
               ])
             )
@@ -87,7 +87,7 @@ export function getScriptTree(): Taptree {
                 Buffer.from('01', 'hex'),
                 Buffer.from('text/plain;charset=utf-8'),
                 'OP_0',
-                Buffer.from('{p:"quas",op:"repay"}'),
+                Buffer.from('{"p":"quas","op":"repay"}'),
                 'ENDIF'
               ])
             )
@@ -109,7 +109,7 @@ export function getScriptTree(): Taptree {
                 Buffer.from('01', 'hex'),
                 Buffer.from('text/plain;charset=utf-8'),
                 'OP_0',
-                Buffer.from('{p:"quas",op:"repay"}'),
+                Buffer.from('{"p":"quas","op":"repay"}'),
                 'ENDIF'
               ])
             )
@@ -127,7 +127,7 @@ export function getScriptTree(): Taptree {
                 Buffer.from('01', 'hex'),
                 Buffer.from('text/plain;charset=utf-8'),
                 'OP_0',
-                Buffer.from('{p:"quas",op:"repay"}'),
+                Buffer.from('{"p":"quas","op":"repay"}'),
                 'ENDIF'
               ])
             )
@@ -147,7 +147,7 @@ export function getScriptTree(): Taptree {
                 Buffer.from('01', 'hex'),
                 Buffer.from('text/plain;charset=utf-8'),
                 'OP_0',
-                Buffer.from('{p:"quas",op:"withdraw"}'),
+                Buffer.from('{"p":"quas","op":"withdraw"}'),
                 'ENDIF'
               ])
             )
@@ -165,7 +165,7 @@ export function getScriptTree(): Taptree {
                 Buffer.from('01', 'hex'),
                 Buffer.from('text/plain;charset=utf-8'),
                 'OP_0',
-                Buffer.from('{p:"quas",op:"withdraw"}'),
+                Buffer.from('{"p":"quas","op":"withdraw"}'),
                 'ENDIF'
               ])
             )
@@ -186,7 +186,7 @@ export function getScriptTree(): Taptree {
           Buffer.from('01', 'hex'),
           Buffer.from('text/plain;charset=utf-8'),
           'OP_0',
-          Buffer.from('{p:"quas",op:"withdraw"}'),
+          Buffer.from('{"p":"quas","op":"withdraw"}'),
           'ENDIF'
         ])
       )

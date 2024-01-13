@@ -4,11 +4,10 @@ import baseStyle from '/src/base.css?inline'
 import style from './tick.css?inline'
 import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/icon/icon'
-import { Unsubscribe, walletState } from '../lib/walletState'
+import { Brc20Balance, Unsubscribe, walletState } from '../lib/walletState'
 import './supplyTick'
 import { formatUnitsComma, parseUnits } from '../lib/units'
-import { toast } from '../lib/toast'
-import { Brc20Balance } from '../lib/wallets'
+import { toast, toastImportant } from '../lib/toast'
 import { getJson } from '../../api_lib/fetch'
 
 @customElement('tick-row')
@@ -16,6 +15,7 @@ export class TickRow extends LitElement {
   static styles = [unsafeCSS(baseStyle), unsafeCSS(style)]
   @property() tick?: string
   @state() balance?: Brc20Balance
+  @state() collateral?: Brc20Balance
   @state() price?: string
   @state() minting = false
 
@@ -33,6 +33,9 @@ export class TickRow extends LitElement {
     this.balanceUpdater ??= this.updateBrc20Balance()
     this.stateUnsubscribe ??= walletState.subscribe(() => {
       walletState.getBrc20Balance().then((balances) => (this.balance = balances.find((b) => b.tick == this.tickQ)))
+      walletState
+        .getCollateraBalance()
+        .then((balances) => (this.collateral = balances.find((b) => b.tick == this.tickQ)))
     })
   }
 
@@ -68,10 +71,7 @@ export class TickRow extends LitElement {
   mint() {
     const tick = this.tickQ!
     this.minting = true
-    var { alert } = toast(`Preparing inscribe transaction`, {
-      variant: 'primary',
-      duration: Infinity
-    })
+    var { alert } = toastImportant(`Preparing inscribe transaction`)
     Promise.all([walletState.connector!.publicKey, walletState.connector?.accounts])
       .then(async ([publicKey, accounts]) => {
         const insRes = await fetch(
@@ -83,16 +83,10 @@ export class TickRow extends LitElement {
           throw new Error(`failed to get brc20 mint inscription address, server returns ${JSON.stringify(insRes)}`)
         }
         await alert.hide()
-        alert = toast(`Inscribing <span style="white-space:pre">${data}</span>`, {
-          variant: 'primary',
-          duration: Infinity
-        }).alert
+        alert = toastImportant(`Inscribing <span style="white-space:pre">${data}</span>`).alert
         const txid = await walletState.connector?.sendBitcoin(address, 699)
         await alert.hide()
-        alert = toast(`Preparing reveal transaction`, {
-          variant: 'primary',
-          duration: Infinity
-        }).alert
+        alert = toastImportant(`Preparing reveal transaction`).alert
         const res = await fetch(
           `/api/brc20Op?op=mint&amt=1000&tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}&txid=${txid}`
         ).then(getJson)
@@ -101,10 +95,7 @@ export class TickRow extends LitElement {
           throw new Error('reveal tx not generated')
         }
         await alert.hide()
-        alert = toast(`Revealing <span style="white-space:pre">${data}</span>`, {
-          variant: 'primary',
-          duration: Infinity
-        }).alert
+        alert = toastImportant(`Revealing <span style="white-space:pre">${data}</span>`).alert
         await walletState.connector
           ?.signPsbt(res.psbt, {
             autoFinalized: true,
@@ -112,11 +103,10 @@ export class TickRow extends LitElement {
           })
           .then((hex) => walletState.connector?.pushPsbt(hex))
           .then((id) => {
-            toast(
+            toastImportant(
               `Mint transactions sent to network.<br>
               Inscription: <a href="https://mempool.space/testnet/tx/${txid}">${txid}</a><br/>
-              Reveal: <a href="https://mempool.space/testnet/tx/${id}">${id}</a>`,
-              { duration: Infinity, closable: true, variant: 'primary' }
+              Reveal: <a href="https://mempool.space/testnet/tx/${id}">${id}</a>`
             )
             console.log(id)
           })
@@ -162,7 +152,7 @@ export class TickRow extends LitElement {
         <sl-button
           variant="default"
           circle
-          ?disabled=${walletState.collateralBalance <= 0}
+          ?disabled=${parseInt(this.collateral?.availableBalance ?? '0') <= 0}
           @click=${() => this.dispatchEvent(new Event('withdraw'))}
         >
           <sl-icon name="dash"></sl-icon>

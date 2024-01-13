@@ -3,26 +3,24 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { Ref, createRef, ref } from 'lit/directives/ref.js'
 import { when } from 'lit/directives/when.js'
 import baseStyle from '/src/base.css?inline'
-import '@shoelace-style/shoelace/dist/components/alert/alert'
 import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/input/input'
 import '@shoelace-style/shoelace/dist/components/dialog/dialog'
 import { StateController, walletState } from '../lib/walletState'
-import { SlAlert, SlDialog, SlInput } from '@shoelace-style/shoelace'
+import { SlDialog, SlInput } from '@shoelace-style/shoelace'
+import { toast } from '../lib/toast'
 
 @customElement('borrow-panel')
 export class BorrowPanel extends LitElement {
   static styles = [unsafeCSS(baseStyle)]
   @property() tick = ''
   @state() input: Ref<SlInput> = createRef<SlInput>()
-  @state() alert: Ref<SlAlert> = createRef<SlAlert>()
   @state() dialog: Ref<SlDialog> = createRef<SlDialog>()
   @state() inputValue = 0
   @state() borrowing = false
   @state() sig1 = false
   @state() sig2 = false
   @state() sig3 = false
-  @state() alertMessage: any
 
   get walletBalance() {
     return walletState.balance?.confirmed ?? 0
@@ -52,8 +50,7 @@ export class BorrowPanel extends LitElement {
       walletState._borrowedBalance += this.input.value!.valueAsNumber
     } catch (e) {
       console.warn(e)
-      this.alertMessage = e
-      this.alert.value?.toast()
+      toast(e)
     }
     this.borrowing = false
   }
@@ -119,19 +116,6 @@ export class BorrowPanel extends LitElement {
           )
         )}
       </sl-dialog>
-
-      <sl-alert
-        variant=${this.alertMessage instanceof Error ? 'danger' : 'warning'}
-        duration="3000"
-        closable
-        ${ref(this.alert)}
-      >
-        <sl-icon
-          slot="icon"
-          name=${this.alertMessage instanceof Error ? 'exclamation-octagon' : 'info-circle'}
-        ></sl-icon>
-        ${this.alertMessage?.message ?? this.alertMessage}
-      </sl-alert>
     `
   }
 }

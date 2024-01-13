@@ -40,7 +40,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
           Buffer.from('01', 'hex'),
           Buffer.from('text/plain;charset=utf-8'),
           'OP_0',
-          Buffer.from('{p:"quas",op:"withdraw"}'),
+          Buffer.from('{"p":"quas","op":"withdraw"}'),
           'ENDIF'
         ])
       ),
@@ -53,12 +53,14 @@ export default async function handler(request: VercelRequest, response: VercelRe
       network: bitcoin.networks.testnet
     })
     var value = 0
+    const psbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
     const utxos: [] = await fetch(`https://mempool.space/testnet/api/address/${p2tr.address}/utxo`)
       .then(getJson)
       .then((utxos) =>
-        utxos.map((utxo: any) => {
+        utxos.forEach((utxo: any) => {
+          if (utxo.value < 1000) return
           value += utxo.value
-          return {
+          psbt.addInput({
             hash: Buffer.from(utxo.txid, 'hex').reverse(),
             index: utxo.vout,
             witnessUtxo: { value: utxo.value, script: p2tr.output! },
@@ -69,23 +71,16 @@ export default async function handler(request: VercelRequest, response: VercelRe
                 controlBlock: p2tr.witness![p2tr.witness!.length - 1]
               }
             ]
-          }
+          })
         })
       )
-    if (utxos.length == 0) {
-      throw new Error('No UTXO can be found')
-    }
-    const psbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
-    utxos.forEach((utxo: any) => psbt.addInput(utxo))
+    if (psbt.inputCount == 0) throw new Error('No UTXO can be withdrawn')
     psbt.addOutput({ address, value })
     psbt.signInput(0, hdKey2.derive(0)).signInput(0, hdKey2.derive(1)).finalizeAllInputs()
 
-    const fastestFee = Math.max(
-      (await fetch('https://mempool.space/testnet/api/v1/fees/recommended').then(getJson)).fastestFee,
-      2
-    )
+    const fastestFee = (await fetch('https://mempool.space/testnet/api/v1/fees/recommended').then(getJson)).fastestFee
 
-    const newFee = psbt.extractTransaction(true).virtualSize() * fastestFee
+    const newFee = Math.max(153, psbt.extractTransaction(true).virtualSize() * fastestFee)
     var finalPsbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
     finalPsbt.setMaximumFeeRate(fastestFee + 1)
     utxos.forEach((utxo: any) => finalPsbt.addInput(utxo))

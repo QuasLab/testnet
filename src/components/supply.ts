@@ -8,7 +8,7 @@ import '@shoelace-style/shoelace/dist/components/input/input'
 import '@shoelace-style/shoelace/dist/components/drawer/drawer'
 import { StateController, walletState } from '../lib/walletState'
 import { SlDrawer, SlInput } from '@shoelace-style/shoelace'
-import { toast } from '../lib/toast'
+import { toast, toastImportant } from '../lib/toast'
 import { getJson } from '../../api_lib/fetch'
 
 @customElement('supply-panel')
@@ -36,12 +36,12 @@ export class SupplyPanel extends LitElement {
   private async addSupply() {
     this.adding = true
     try {
-      const addr = await fetch(`/api/depositAddress?pub=${await walletState.connector!.publicKey}`)
-        .then(getJson)
-        .then((js) => js.address)
+      const addr = await walletState.getDepositAddress()
       console.log(addr, this.input.value!.valueAsNumber * 1e8)
       const tx = await walletState.connector!.sendBitcoin(addr, this.input.value!.valueAsNumber * 1e8)
-      toast(`Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`)
+      toastImportant(
+        `Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`
+      )
       this.drawer.value?.hide()
     } catch (e) {
       console.warn(e)

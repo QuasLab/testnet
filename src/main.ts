@@ -20,12 +20,13 @@ import './components/supply'
 import './components/supplyTick'
 import './components/tick'
 import { SupplyPanel } from './components/supply'
-import { walletState } from './lib/walletState'
+import { Brc20Balance, UTXO, walletState } from './lib/walletState'
 import { SupplyTickPanel } from './components/supplyTick'
 import { BorrowPanel } from './components/borrow'
 import { RepayPanel } from './components/repay'
-import { toast } from './lib/toast'
+import { toast, toastImportant } from './lib/toast'
 import { getJson } from '../api_lib/fetch'
+import { formatUnits, parseUnits } from './lib/units'
 
 setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/')
 
@@ -55,18 +56,25 @@ export class AppMain extends LitElement {
   @state() repayPanel: Ref<RepayPanel> = createRef<RepayPanel>()
   @state() withdrawing = false
   @state() walletBalance = 0
-
-  get protocolBalance() {
-    const utxos = walletState.protocolBalance
-    var value = 0
-    utxos?.forEach((utxo) => (value += utxo.value))
-    return value
-  }
+  @state() protocolBalance = 0
+  @state() collateralBalance = 0n
 
   constructor() {
     super()
-    walletState.subscribe(() => {
-      this.walletBalance = walletState.balance?.confirmed ?? 0
+    walletState.subscribe((k, v) => {
+      switch (k) {
+        case '_balance':
+          this.walletBalance = v.confirmed ?? 0
+          break
+        case '_protocolBalance':
+          this.protocolBalance = 0
+          v.forEach((utxo: UTXO) => (this.protocolBalance += utxo.value))
+          break
+        case '_collateralBalance':
+          this.collateralBalance = 0n
+          v.forEach((balance: Brc20Balance) => (this.collateralBalance += BigInt(balance.availableBalance)))
+          break
+      }
     })
   }
 
@@ -85,7 +93,7 @@ export class AppMain extends LitElement {
   }
 
   withdrawTick(_: string) {
-    walletState._collateralBalance = 0
+    // walletState._collateralBalance = 0
   }
 
   deploy(tick: string) {
@@ -119,19 +127,13 @@ export class AppMain extends LitElement {
   async withdraw() {
     this.withdrawing = true
     fetch(`/api/withdraw?pub=${await walletState.connector!.publicKey}&address=${walletState.address}`)
-      .then((res) => {
-        if (res.status != 200)
-          return res.json().then((json) => {
-            throw new Error(json.message)
-          })
-        return res.json()
-      })
-      .then((txid) => {
-        toast(`Withdraw transaction <a href="https://mempool.space/testnet/tx/${txid}">${txid}</a> sent to network.`)
-      })
-      .catch((e) => {
-        toast(e)
-      })
+      .then(getJson)
+      .then(({ tx }) =>
+        toastImportant(
+          `Withdraw transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> sent to network.`
+        )
+      )
+      .catch((e) => toast(e))
       .finally(() => (this.withdrawing = false))
   }
 
@@ -197,7 +199,7 @@ export class AppMain extends LitElement {
           </div>
           <div class="mt-5 flex sm:my-auto space-x-4">
             ${when(
-              walletState._collateralBalance <= 0,
+              this.collateralBalance <= 0,
               () => html`
                 <sl-button
                   class="supply"
@@ -228,8 +230,8 @@ export class AppMain extends LitElement {
               () => html`
                 <sl-button
                   class="supply"
-                  variant=${walletState._collateralBalance <= 0 ? 'default' : 'primary'}
-                  ?disabled=${walletState._collateralBalance <= 0}
+                  variant=${this.collateralBalance <= 0 ? 'default' : 'primary'}
+                  ?disabled=${this.collateralBalance <= 0}
                   pill
                   @click=${() => this.borrow()}
                 >
@@ -237,7 +239,7 @@ export class AppMain extends LitElement {
                   Borrow BTC
                 </sl-button>
                 ${when(
-                  walletState._collateralBalance > 0,
+                  this.collateralBalance > 0,
                   () => html`
                     <sl-button
                       class="supply"
@@ -304,8 +306,8 @@ export class AppMain extends LitElement {
             <div class="relative panel">
               <span class="text-xs text-sl-neutral-600 font-medium">Position Summary</span>
               <div class="flex my-4 text-sm">
-                <span class="flex-1">Collateral Value</span>
-                <span class="flex-1 text-end">${walletState.collateralBalance}</span>
+                <span class="flex-auto">Collateral Value</span>
+                <span class="flex-auto text-end">${formatUnits(this.collateralBalance, 18)}</span>
               </div>
             </div>
           </div>
