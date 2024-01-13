@@ -1,5 +1,6 @@
 import { LitElement, html, unsafeCSS } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+import { when } from 'lit/directives/when.js'
 import baseStyle from '/src/base.css?inline'
 import style from './tick.css?inline'
 import '@shoelace-style/shoelace/dist/components/button/button'
@@ -124,18 +125,18 @@ export class TickRow extends LitElement {
   render() {
     return html`
       <span class="brc20-icon" style="background-image:url(brc20-${this.tick}.png)"></span>
-      <div class="ml-3 flex-auto">
-        <p class="text-sm">
-          <a href="https://testnet.unisat.io/brc20/${this.tickQ}" class="font-medium">${this.tick}</a>
-          <span class="text-xs text-sl-neutral-600">
+      <div class="ml-3 flex-auto text-xs">
+        <p>
+          <a href="https://testnet.unisat.io/brc20/${this.tickQ}" class="font-medium text-sm">${this.tick}</a>
+          <span class="text-sl-neutral-600">
             Price: ${this.price ? formatUnitsComma(parseUnits(this.price ?? '0', 18), 10) : '-'} sats
           </span>
         </p>
-        <p class="text-xs text-sl-neutral-600">
+        <p class="text-sl-neutral-600">
           ${this.balance ? formatUnitsComma(this.balance.availableBalance ?? '0', 18) : '-'} in wallet
         </p>
       </div>
-      <div class="space-x-2 flex-none">
+      <div class="space-x-2 flex-none relative">
         <sl-tooltip content="Mint" class="flex-auto">
           <sl-button variant="text" circle ?loading=${this.minting} @click=${() => this.mint()}>
             <sl-icon name="lightning-charge" class="text-xl"></sl-icon>
@@ -157,6 +158,13 @@ export class TickRow extends LitElement {
         >
           <sl-icon name="dash"></sl-icon>
         </sl-button>
+        ${when(
+          this.collateral,
+          () =>
+            html`<p class="text-xs text-sl-neutral-600 absolute -bottom-5 right-0">
+              ${formatUnitsComma(this.collateral?.availableBalance ?? '0', 18)} in protocol
+            </p>`
+        )}
       </div>
     `
   }
