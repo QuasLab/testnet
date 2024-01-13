@@ -136,7 +136,7 @@ export class TickRow extends LitElement {
       <span class="brc20-icon" style="background-image:url(brc20-${this.tick}.png)"></span>
       <div class="ml-3 flex-auto">
         <p class="text-sm">
-          <a href="https://testnet.unisat.io/brc20/${this.tickQ}" target="_blank" class="font-medium">${this.tick}</a>
+          <a href="https://testnet.unisat.io/brc20/${this.tickQ}" class="font-medium">${this.tick}</a>
           <span class="text-xs text-sl-neutral-600">
             Price: ${this.price ? formatUnitsComma(parseUnits(this.price ?? '0', 18), 10) : '-'} sats
           </span>
