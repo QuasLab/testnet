@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import * as bitcoin from 'bitcoinjs-lib'
 import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341.js'
 import ecc from '@bitcoinerlab/secp256k1'
-import { getSupplyP2tr, hdKey } from '../api_lib/depositAddress.js'
+import { getDepositP2tr, hdKey } from '../api_lib/depositAddress.js'
 import { getJson } from '../api_lib/fetch.js'
 import { scriptQuas } from '../api_lib/scripts.js'
 
@@ -20,14 +20,13 @@ export default async function handler(request: VercelRequest, response: VercelRe
       output: scriptQuas(hdKey.derive(0).publicKey, hdKey.derive(1).publicKey, 'withdraw'),
       redeemVersion: LEAF_VERSION_TAPSCRIPT
     }
-    const p2tr = getSupplyP2tr(redeem)
+    const p2tr = getDepositP2tr(pubKey, redeem)
     var value = 0
     const psbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
     const utxos: [] = await fetch(`https://mempool.space/testnet/api/address/${p2tr.address}/utxo`)
       .then(getJson)
       .then((utxos) =>
-        utxos.forEach((utxo: any) => {
-          if (utxo.value < 1000) return
+        utxos.map((utxo: any) => {
           value += utxo.value
           return {
             hash: Buffer.from(utxo.txid, 'hex').reverse(),
@@ -58,19 +57,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
     finalPsbt.signAllInputs(hdKey.derive(0)).signAllInputs(hdKey.derive(1)).finalizeAllInputs()
 
     var finalTx = finalPsbt.extractTransaction()
-
-    // console.log(finalTx.getId(), finalTx.toHex())
-    // finalTx.ins.forEach((i) =>
-    //   console.log({
-    //     ...i,
-    //     hash: i.hash.toString('hex'),
-    //     script: i.script.toString('hex'),
-    //     scriptHash: p2tr.pubkey?.toString('hex'),
-    //     scriptAddress: p2tr.address,
-    //     witness: i.witness.map((w) => w.toString('hex'))
-    //   })
-    // )
-    // console.log(Buffer.from(btc.Transaction.fromRaw(finalTx.toBuffer()).getInput(0).txid!).toString('hex'))
 
     await fetch('https://mempool.space/testnet/api/tx', {
       method: 'POST',

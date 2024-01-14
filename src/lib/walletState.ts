@@ -86,6 +86,24 @@ class WalletState extends State {
       .finally(() => (this._depositaddressPromise = undefined)))
   }
 
+  @property() private _depositBrc20address?: string
+  public get depositBrc20address(): string | undefined {
+    if (this._depositBrc20address) return this._depositBrc20address
+    this.updateDepositBrc20Address()
+  }
+  public async getDepositBrc20Address() {
+    return this._depositBrc20address ?? this.updateDepositBrc20Address()
+  }
+
+  private _depositBrc20addressPromise?: Promise<string>
+  public async updateDepositBrc20Address() {
+    return (this._depositBrc20addressPromise ??= this.getPublicKey()
+      .then((publicKey) => fetch(`/api/depositBrc20Address?pub=${publicKey}`))
+      .then(getJson)
+      .then((js) => js.address)
+      .finally(() => (this._depositBrc20addressPromise = undefined)))
+  }
+
   @property({ type: Object }) private _balance?: Balance
   private _balancePromise?: Promise<Balance>
   public get balance(): Balance | undefined {
@@ -146,12 +164,12 @@ class WalletState extends State {
 
   private _collateralBalancePromise?: any
   public async updateCollateralBalance(): Promise<Brc20Balance[]> {
-    return (this._collateralBalancePromise ??= this.getDepositAddress()
+    return (this._collateralBalancePromise ??= this.getDepositBrc20Address()
       .then((address) => fetch(`${import.meta.env.VITE_ORD_BASE_URL}/api/v1/brc20/address/${address}/balance`))
       .then((res) => res.json())
       .then((res) => res.data.balance)
       .then((balances) => (this._collateralBalance = balances))
-      .catch((e) => console.log(`failed to fetch brc20 balance for ${walletState.depositaddress}, error:`, e))
+      .catch((e) => console.log(`failed to fetch brc20 balance for ${walletState.depositBrc20address}, error:`, e))
       .finally(() => (this._collateralBalancePromise = undefined)))
   }
 

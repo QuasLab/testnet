@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getSupplyP2tr } from '../api_lib/depositAddress.js'
+import { getDepositAddress } from '../api_lib/depositAddress.js'
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {
     const pubKey = request.query['pub'] as string
     if (!pubKey) throw new Error('missing public key')
 
-    response.status(200).send({ address: getSupplyP2tr().address })
+    response.status(200).send({ address: getDepositAddress(pubKey) })
     // console.log(p2tr.address)
   } catch (err) {
     if (err instanceof Error) {

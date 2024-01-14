@@ -83,12 +83,12 @@ export class AppMain extends LitElement {
       const priceMul = parseUnits((10 ** priceDecimals).toString(), 0)
       for (let tick in marketState.brc20Price) {
         const price = marketState.brc20Price[tick]
-        const balance = balances.find((b) => (b.tick = tick.replace(/.$/, 'Q')))
+        const balance = balances.find((b) => b.tick == tick.replace(/.$/, 'Q'))
         if (!price || !balance) return
         value = value.add(
           parseUnits(
             formatUnits(
-              parseUnits(balance.availableBalance, 0).mul(parseUnits(price.floorPrice, 18)).div(priceMul),
+              parseUnits(balance.overallBalance, 0).mul(parseUnits(price.floorPrice, 18)).div(priceMul),
               balance.decimals
             )
           )
@@ -110,10 +110,6 @@ export class AppMain extends LitElement {
       .then((balances) => balances.find((b) => b.tick == tick.replace(/.$/, 'Q')))
       .then((b) => b && (this.supplyTickPanel.value!.max = BigInt(b.availableBalance)))
     this.supplyTickPanel.value?.show()
-  }
-
-  withdrawTick(_: string) {
-    // walletState._collateralBalance = 0
   }
 
   deploy(tick: string) {
@@ -290,7 +286,6 @@ export class AppMain extends LitElement {
                       class="py-4 flex items-center"
                       .tick=${tick}
                       @supply=${() => this.supplyTick(tick)}
-                      @withdraw=${() => this.withdrawTick(tick)}
                     ></tick-row>
                   </li>`
                 })}

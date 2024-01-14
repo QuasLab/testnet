@@ -78,7 +78,7 @@ export class RepayPanel extends LitElement {
           <sl-button
             size="small"
             @click=${() => {
-              this.input.value!.value = formatUnits(walletState.collateralBalance?.[0]?.availableBalance ?? '0', 18)
+              this.input.value!.value = formatUnits(walletState.collateralBalance?.[0]?.overallBalance ?? '0', 18)
               this.inputValue = this.input.value!.valueAsNumber
             }}
             pill
@@ -87,7 +87,7 @@ export class RepayPanel extends LitElement {
         </div>
         <div class="flex text-xs items-center text-sl-neutral-600">
           <span class="brc20-icon" style="background-image:url(brc20-${this.tick}.png)"></span>Max to
-          ${formatUnits(walletState.collateralBalance?.[0]?.availableBalance ?? '0', 18)}
+          ${formatUnits(walletState.collateralBalance?.[0]?.overallBalance ?? '0', 18)}
         </div>
         <div class="mt-4 space-y-2">
           <sl-button

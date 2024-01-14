@@ -45,7 +45,7 @@ export class SupplyTickPanel extends LitElement {
       if (!inscribeAddress) throw new Error('failed to get brc20 transfer inscription address')
       await alert.hide()
 
-      alert = toastImportant(`Inscribing <span style="white-space:pre">${data}</span>`).alert
+      alert = toastImportant(`Inscribing <span style="white-space:pre-wrap">${data}</span>`).alert
       const inscribeTx = await walletState.connector?.sendBitcoin(inscribeAddress, 699)
       await alert.hide()
 
@@ -59,7 +59,7 @@ export class SupplyTickPanel extends LitElement {
       }
       await alert.hide()
 
-      alert = toastImportant(`Revealing <span style="white-space:pre">${data}</span>`).alert
+      alert = toastImportant(`Revealing <span style="white-space:pre-wrap">${data}</span>`).alert
       const revealTx = await walletState.connector
         ?.signPsbt(res.psbt, {
           autoFinalized: true,
@@ -74,7 +74,7 @@ export class SupplyTickPanel extends LitElement {
             Now supply to protocol`
       ).alert
       const supplyTx = await walletState.connector?.sendInscription(
-        await walletState.getDepositAddress(),
+        await walletState.getDepositBrc20Address(),
         `${revealTx}i0`
       )
       await alert.hide()
