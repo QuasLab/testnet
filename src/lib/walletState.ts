@@ -8,6 +8,7 @@ export { StateController, type Unsubscribe } from '@lit-app/state'
 
 export type Brc20Balance = {
   tick: string
+  decimals: number
   availableBalance: string
   transferableBalance: string
   overallBalance: string
@@ -28,7 +29,7 @@ export type UTXO = {
 class WalletState extends State {
   @storage({ key: 'wallet' }) @property() wallet?: WalletType
 
-  @property() private _address?: string
+  @property({ skipReset: true }) private _address?: string
   public get address(): string | undefined {
     if (!this._address) this.updateAddress()
     return this._address
@@ -52,6 +53,11 @@ class WalletState extends State {
   }
   public async getPublicKey() {
     return this._publicKey ?? this.updatePublicKey()
+  }
+
+  protected onAccountChanged = (accounts: string[]) => {
+    this.reset(false)
+    if (accounts) this._address = accounts[0]
   }
 
   private _publicKeyPromise?: Promise<string>
@@ -105,8 +111,12 @@ class WalletState extends State {
     return (this._brc20BalancePromise ??= this.getAddress()
       .then((address) => fetch(`${import.meta.env.VITE_ORD_BASE_URL}/api/v1/brc20/address/${address}/balance`))
       .then((res) => res.json())
-      .then((res) => res.data.balance)
-      .then((balances) => (this._brc20Balance = balances))
+      .then(
+        (res) =>
+          (this._brc20Balance = res.data.balance.map((b: any) => {
+            return { decimals: 18, ...b }
+          }))
+      )
       .catch((e) => console.log(`failed to fetch brc20 balance for ${walletState.address}, error:`, e))
       .finally(() => (this._brc20BalancePromise = undefined)))
   }
@@ -130,7 +140,7 @@ class WalletState extends State {
     this.updateCollateralBalance()
   }
 
-  public async getCollateraBalance() {
+  public async getCollateralBalance() {
     return this._collateralBalance ?? this.updateCollateralBalance()
   }
 
@@ -174,11 +184,6 @@ class WalletState extends State {
     )
   }
 
-  protected onAccountChanged = (accounts: string[]) => {
-    this.reset(true)
-    if (accounts) this._address = accounts[0]
-  }
-
   useWallet(type: WalletType) {
     this.reset()
     switch (type) {
@@ -194,7 +199,7 @@ class WalletState extends State {
     this._connector.on('accountsChanged', this.onAccountChanged)
   }
 
-  reset(skipConnector = false): void {
+  reset(resetConnectorAndAddress = true): void {
     super.reset()
     ;[...this.propertyMap]
       // @ts-ignore
@@ -202,9 +207,11 @@ class WalletState extends State {
       .forEach(([key, definition]) => {
         ;(this as {} as { [key: string]: unknown })[key as string] = definition.resetValue
       })
-    if (skipConnector) return
-    this._connector?.removeListener('accountsChanged', this.onAccountChanged)
-    this._connector = undefined
+    if (resetConnectorAndAddress) {
+      this._connector?.removeListener('accountsChanged', this.onAccountChanged)
+      this._connector = undefined
+      this._address = undefined
+    }
   }
 }
 

@@ -20,13 +20,14 @@ import './components/supply'
 import './components/supplyTick'
 import './components/tick'
 import { SupplyPanel } from './components/supply'
-import { Brc20Balance, UTXO, walletState } from './lib/walletState'
+import { UTXO, walletState } from './lib/walletState'
 import { SupplyTickPanel } from './components/supplyTick'
 import { BorrowPanel } from './components/borrow'
 import { RepayPanel } from './components/repay'
 import { toast, toastImportant } from './lib/toast'
 import { getJson } from '../api_lib/fetch'
-import { formatUnits } from './lib/units'
+import { formatUnits, parseUnits } from './lib/units'
+import { marketState } from './lib/marketState'
 
 setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/')
 
@@ -57,7 +58,7 @@ export class AppMain extends LitElement {
   @state() withdrawing = false
   @state() walletBalance = 0
   @state() protocolBalance = 0
-  @state() collateralBalance = 0n
+  @state() collateralValue = 0
 
   constructor() {
     super()
@@ -70,11 +71,30 @@ export class AppMain extends LitElement {
           this.protocolBalance = 0
           v.forEach((utxo: UTXO) => (this.protocolBalance += utxo.value))
           break
-        case '_collateralBalance':
-          this.collateralBalance = 0n
-          v.forEach((balance: Brc20Balance) => (this.collateralBalance += BigInt(balance.availableBalance)))
-          break
       }
+    })
+    marketState.subscribe(() => this.updateCollateralValue(), 'brc20Price')
+  }
+
+  private updateCollateralValue() {
+    walletState.getCollateralBalance().then(async (balances) => {
+      var value = parseUnits('0')
+      const priceDecimals = 18
+      const priceMul = parseUnits((10 ** priceDecimals).toString(), 0)
+      for (let tick in marketState.brc20Price) {
+        const price = marketState.brc20Price[tick]
+        const balance = balances.find((b) => (b.tick = tick.replace(/.$/, 'Q')))
+        if (!price || !balance) return
+        value = value.add(
+          parseUnits(
+            formatUnits(
+              parseUnits(balance.availableBalance, 0).mul(parseUnits(price.floorPrice, 18)).div(priceMul),
+              balance.decimals
+            )
+          )
+        )
+      }
+      this.collateralValue = parseFloat(Number(formatUnits(value)).toFixed(8))
     })
   }
 
@@ -138,7 +158,8 @@ export class AppMain extends LitElement {
   }
 
   async borrow() {
-    this.borrowPanel.value?.show()
+    this.borrowPanel.value!.max = this.collateralValue
+    this.borrowPanel.value!.show()
   }
 
   async repay() {
@@ -199,7 +220,7 @@ export class AppMain extends LitElement {
           </div>
           <div class="mt-5 flex sm:my-auto space-x-4">
             ${when(
-              this.collateralBalance <= 0,
+              this.collateralValue <= 0,
               () => html`
                 <sl-button
                   class="supply"
@@ -230,8 +251,8 @@ export class AppMain extends LitElement {
               () => html`
                 <sl-button
                   class="supply"
-                  variant=${this.collateralBalance <= 0 ? 'default' : 'primary'}
-                  ?disabled=${this.collateralBalance <= 0}
+                  variant=${this.collateralValue <= 0 ? 'default' : 'primary'}
+                  ?disabled=${this.collateralValue <= 0}
                   pill
                   @click=${() => this.borrow()}
                 >
@@ -239,7 +260,7 @@ export class AppMain extends LitElement {
                   Borrow BTC
                 </sl-button>
                 ${when(
-                  this.collateralBalance > 0,
+                  this.collateralValue > 0,
                   () => html`
                     <sl-button
                       class="supply"
@@ -307,7 +328,7 @@ export class AppMain extends LitElement {
               <span class="text-xs text-sl-neutral-600 font-medium">Position Summary</span>
               <div class="flex my-4 text-sm">
                 <span class="flex-auto">Collateral Value</span>
-                <span class="flex-auto text-end">${formatUnits(this.collateralBalance, 18)}</span>
+                <span class="flex-auto text-end">${this.collateralValue > 0 ? this.collateralValue : '-'}</span>
               </div>
             </div>
           </div>

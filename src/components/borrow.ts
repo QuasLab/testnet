@@ -6,15 +6,14 @@ import baseStyle from '/src/base.css?inline'
 import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/input/input'
 import '@shoelace-style/shoelace/dist/components/dialog/dialog'
-import { StateController, walletState } from '../lib/walletState'
 import { SlDialog, SlInput } from '@shoelace-style/shoelace'
 import { toast } from '../lib/toast'
-import { formatUnits } from '../lib/units'
 
 @customElement('borrow-panel')
 export class BorrowPanel extends LitElement {
   static styles = [unsafeCSS(baseStyle)]
   @property() tick = ''
+  @property() max = 0
   @state() input: Ref<SlInput> = createRef<SlInput>()
   @state() dialog: Ref<SlDialog> = createRef<SlDialog>()
   @state() inputValue = 0
@@ -22,15 +21,6 @@ export class BorrowPanel extends LitElement {
   @state() sig1 = false
   @state() sig2 = false
   @state() sig3 = false
-
-  get walletBalance() {
-    return walletState.balance?.confirmed ?? 0
-  }
-
-  constructor() {
-    super()
-    new StateController(this, walletState)
-  }
 
   public show() {
     this.borrowing = false
@@ -48,7 +38,7 @@ export class BorrowPanel extends LitElement {
         new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 1200)).then(() => (this.sig2 = true)),
         new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 1200)).then(() => (this.sig3 = true))
       ])
-      walletState._borrowedBalance += this.input.value!.valueAsNumber
+      // walletState._borrowedBalance += this.input.value!.valueAsNumber
     } catch (e) {
       console.warn(e)
       toast(e)
@@ -72,7 +62,7 @@ export class BorrowPanel extends LitElement {
           <sl-button
             size="small"
             @click=${() => {
-              this.input.value!.value = formatUnits(walletState.collateralBalance?.[0]?.availableBalance ?? '0', 18)
+              this.input.value!.value = this.max.toString()
               this.inputValue = this.input.value!.valueAsNumber
             }}
             pill
@@ -80,8 +70,7 @@ export class BorrowPanel extends LitElement {
           >
         </div>
         <div class="flex text-xs items-center text-sl-neutral-600">
-          <span class="brc20-icon" style="background-image:url(brc20-${this.tick}.png)"></span>Max to
-          ${formatUnits(walletState.collateralBalance?.[0]?.availableBalance ?? '0', 18)}
+          <span class="brc20-icon" style="background-image:url(brc20-${this.tick}.png)"></span>Max to ${this.max}
         </div>
         <div class="mt-4 space-y-2">
           <sl-button

@@ -10,6 +10,7 @@ import './supplyTick'
 import { formatUnitsComma, parseUnits } from '../lib/units'
 import { toast, toastImportant } from '../lib/toast'
 import { getJson } from '../../api_lib/fetch'
+import { Brc20Price, marketState } from '../lib/marketState'
 
 @customElement('tick-row')
 export class TickRow extends LitElement {
@@ -26,45 +27,51 @@ export class TickRow extends LitElement {
 
   private priceUpdater?: Promise<any>
   private balanceUpdater?: Promise<any>
-  private stateUnsubscribe?: Unsubscribe
+  private stateUnsubscribes: Unsubscribe[] = []
 
   connectedCallback(): void {
     super.connectedCallback()
+    this.stateUnsubscribes.push(
+      walletState.subscribe((k, v) => {
+        switch (k) {
+          case '_brc20Balance':
+            this.balance = v.find((b: any) => b.tick == this.tickQ)
+            break
+          case '_collateralBalance':
+            this.collateral = v.find((b: any) => b.tick == this.tickQ)
+            break
+        }
+      })
+    )
+    this.stateUnsubscribes.push(
+      marketState.subscribe((_, v: Record<string, Brc20Price>) => {
+        if (this.tick) this.price = v[this.tick]?.floorPrice
+      }, 'brc20Price')
+    )
     this.priceUpdater ??= this.updateBrc20Price()
     this.balanceUpdater ??= this.updateBrc20Balance()
-    this.stateUnsubscribe ??= walletState.subscribe(() => {
-      walletState.getBrc20Balance().then((balances) => (this.balance = balances.find((b) => b.tick == this.tickQ)))
-      walletState
-        .getCollateraBalance()
-        .then((balances) => (this.collateral = balances.find((b) => b.tick == this.tickQ)))
-    })
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback()
     this.priceUpdater = undefined
     this.balanceUpdater = undefined
-    this.stateUnsubscribe?.()
-    this.stateUnsubscribe = undefined
+    this.stateUnsubscribes.forEach((f) => f())
+    this.stateUnsubscribes = []
   }
 
   async updateBrc20Price() {
     while (true) {
-      try {
-        this.price = await fetch(`/api/collections?slug=${this.tick}`)
-          .then(getJson)
-          .then((res) => res?.data?.data?.[0]?.floorPrice)
-          .catch((e) => console.log(`failed to fetch price for ${this.tick}, error:`, e))
-      } catch (e) {}
+      await marketState
+        .updateBrc20Price(this.tick!)
+        .catch((e) => console.log(`failed to fetch price for ${this.tick}, error:`, e))
       await new Promise((r) => setTimeout(r, 60000))
     }
   }
 
   async updateBrc20Balance() {
     while (true) {
-      try {
-        this.balance = (await walletState.updateBrc20Balance()).find((b) => b.tick == this.tickQ)
-      } catch (e) {}
+      await walletState.updateBrc20Balance().catch((e) => console.log(`failed to update brc20 balance, error:`, e))
       await new Promise((r) => setTimeout(r, 60000))
     }
   }
@@ -133,7 +140,10 @@ export class TickRow extends LitElement {
           </span>
         </p>
         <p class="text-sl-neutral-600">
-          ${this.balance ? formatUnitsComma(this.balance.availableBalance ?? '0', 18) : '-'} in wallet
+          ${this.balance?.availableBalance
+            ? formatUnitsComma(this.balance.availableBalance, this.balance.decimals)
+            : '-'}
+          in wallet
         </p>
       </div>
       <div class="space-x-2 flex-none relative">
@@ -159,10 +169,10 @@ export class TickRow extends LitElement {
           <sl-icon name="dash"></sl-icon>
         </sl-button>
         ${when(
-          this.collateral,
+          this.collateral?.availableBalance,
           () =>
             html`<p class="text-xs text-sl-neutral-600 absolute -bottom-5 right-0">
-              ${formatUnitsComma(this.collateral?.availableBalance ?? '0', 18)} in protocol
+              ${formatUnitsComma(this.collateral?.availableBalance, this.collateral?.decimals)} in protocol
             </p>`
         )}
       </div>
