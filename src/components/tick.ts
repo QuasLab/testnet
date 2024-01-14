@@ -217,7 +217,7 @@ export class TickRow extends LitElement {
           <sl-icon name="dash"></sl-icon>
         </sl-button>
         ${when(
-          this.collateral?.overallBalance,
+          parseInt(this.collateral?.overallBalance ?? '0') > 0,
           () =>
             html`<p class="text-xs text-sl-neutral-600 absolute -bottom-5 right-0">
               ${formatUnitsComma(this.collateral?.overallBalance, this.collateral?.decimals)} in protocol

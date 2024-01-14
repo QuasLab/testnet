@@ -2,7 +2,7 @@ import { schnorr, secp256k1 } from '@noble/curves/secp256k1'
 import { Taptree } from 'bitcoinjs-lib/src/types'
 import * as bitcoin from 'bitcoinjs-lib'
 import * as ecc from '@bitcoinerlab/secp256k1'
-import { scriptQuas } from './scripts.js'
+import { scriptQuas, toXOnly } from './scripts.js'
 import { BIP32Factory, BIP32Interface } from 'bip32'
 
 bitcoin.initEccLib(ecc)
@@ -22,7 +22,7 @@ function scriptLeaf(a: number, b: number, action: string) {
 
 export function getSupplyP2tr(redeem?: any) {
   return bitcoin.payments.p2tr({
-    internalPubkey: hdKey.publicKey,
+    internalPubkey: Buffer.from(toXOnly(hdKey.publicKey)),
     scriptTree: getDepositScriptTree(),
     redeem,
     network: bitcoin.networks.testnet
