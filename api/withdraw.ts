@@ -28,22 +28,24 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const utxos: [] = await fetch(`https://mempool.space/testnet/api/address/${p2tr.address}/utxo`)
       .then(getJson)
       .then((utxos) =>
-        utxos.map((utxo: any) => {
-          if (utxo.value < 1000 || value > withdrawAmt.total) return
-          value += utxo.value
-          return {
-            hash: Buffer.from(utxo.txid, 'hex').reverse(),
-            index: utxo.vout,
-            witnessUtxo: { value: utxo.value, script: p2tr.output! },
-            tapLeafScript: [
-              {
-                leafVersion: redeem.redeemVersion!,
-                script: redeem.output,
-                controlBlock: p2tr.witness![p2tr.witness!.length - 1]
-              }
-            ]
-          }
-        })
+        utxos
+          .map((utxo: any) => {
+            if (utxo.value < 1000 || value > withdrawAmt.total) return
+            value += utxo.value
+            return {
+              hash: Buffer.from(utxo.txid, 'hex').reverse(),
+              index: utxo.vout,
+              witnessUtxo: { value: utxo.value, script: p2tr.output! },
+              tapLeafScript: [
+                {
+                  leafVersion: redeem.redeemVersion!,
+                  script: redeem.output,
+                  controlBlock: p2tr.witness![p2tr.witness!.length - 1]
+                }
+              ]
+            }
+          })
+          .filter((utxo: any) => utxo != undefined)
       )
     utxos.forEach((utxo: any) => psbt.addInput(utxo))
     if (psbt.inputCount == 0) throw new Error('No UTXO can be withdrawn')

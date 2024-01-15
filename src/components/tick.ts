@@ -158,10 +158,18 @@ export class TickRow extends LitElement {
       const inscribeTx = await walletState.connector?.sendBitcoin(inscribeAddress, 546 + 153 + 221)
       await alert.hide()
 
-      alert = toastImportant(`Withdrawing`).alert
-      const res = await fetch(
-        `/api/withdrawTick?amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${address}&txid=${inscribeTx}`
-      ).then(getJson)
+      alert = toastImportant(`Withdrawing, waiting for MPC signatures...`).alert
+      const [res] = await Promise.all([
+        fetch(
+          `/api/withdrawTick?amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${address}&txid=${inscribeTx}`
+        ).then(getJson),
+        new Promise((r) => setTimeout(r, 500 + Math.random() * 2000)).then(() => {
+          alert.innerHTML += '✔️'
+        }),
+        new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000)).then(() => {
+          alert.innerHTML += '✔️'
+        })
+      ])
       const { txs } = res
       if (!Array.isArray(txs)) {
         console.error('withdraw txs not generated', res)

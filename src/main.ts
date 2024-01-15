@@ -170,16 +170,26 @@ export class AppMain extends LitElement {
 
   async withdraw() {
     this.withdrawing = true
-    fetch(`/api/withdraw?pub=${await walletState.connector!.publicKey}&address=${walletState.address}`)
-      .then(getJson)
-      .then(({ tx }) => {
-        toastImportant(
-          `Withdraw transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> sent to network.`
-        )
-        walletState.updateProtocolBalance()
+    const { alert } = toastImportant('Withdrawing, waiting for MPC signatures...')
+    Promise.all([
+      fetch(`/api/withdraw?pub=${await walletState.connector!.publicKey}&address=${walletState.address}`)
+        .then(getJson)
+        .then(({ tx }) => {
+          alert.hide().then(() => {
+            toastImportant(
+              `Withdraw transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> sent to network.`
+            )
+          })
+          walletState.updateProtocolBalance()
+        })
+        .catch((e) => toast(e)),
+      new Promise((r) => setTimeout(r, 500 + Math.random() * 2000)).then(() => {
+        alert.innerHTML += '✔️'
+      }),
+      new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000)).then(() => {
+        alert.innerHTML += '✔️'
       })
-      .catch((e) => toast(e))
-      .finally(() => (this.withdrawing = false))
+    ]).finally(() => (this.withdrawing = false))
   }
 
   async borrow() {
