@@ -174,22 +174,19 @@ export class AppMain extends LitElement {
     Promise.all([
       fetch(`/api/withdraw?pub=${await walletState.connector!.publicKey}&address=${walletState.address}`)
         .then(getJson)
-        .then(({ tx }) => {
-          alert.hide().then(() => {
-            toastImportant(
-              `Withdraw transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> sent to network.`
-            )
-          })
-          walletState.updateProtocolBalance()
-        })
         .catch((e) => toast(e)),
-      new Promise((r) => setTimeout(r, 500 + Math.random() * 2000)).then(() => {
-        alert.innerHTML += '✔️'
-      }),
-      new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000)).then(() => {
-        alert.innerHTML += '✔️'
+      new Promise((r) => setTimeout(r, 500 + Math.random() * 2000)).then(() => (alert.innerHTML += '✔️')),
+      new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000)).then(() => (alert.innerHTML += '✔️'))
+    ])
+      .then(([{ tx }]) => {
+        alert.hide().then(() => {
+          toastImportant(
+            `Withdraw transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> sent to network.`
+          )
+        })
+        walletState.updateProtocolBalance()
       })
-    ]).finally(() => (this.withdrawing = false))
+      .finally(() => (this.withdrawing = false))
   }
 
   async borrow() {
@@ -225,41 +222,30 @@ export class AppMain extends LitElement {
         <div class="my-10 grid sm:flex">
           <div class="sm:flex-auto font-medium">
             ${when(
-              walletState.borrowedBalance <= 0,
-              () => html`
-                <span class="text-xs" style="color:var(--sl-color-green-500)">Balance</span>
-                <div class="flex text-4xl my-1 items-center">
-                  <sl-icon outline name="currency-bitcoin"></sl-icon>
-                  ${Math.floor(Number(this.protocolBalance?.total ?? '0') / 1e8)}.<span class="text-sl-neutral-600"
-                    >${Math.floor((Number(this.protocolBalance?.total ?? '0') % 1e8) / 1e4)
-                      .toString()
-                      .padStart(4, '0')}</span
-                  >
-                  ${when(
-                    this.protocolBalance?.unconfirmed,
-                    () =>
-                      html`<span class="text-xs ml-1 border-l pl-2 text-sl-neutral-600 font-light">
-                        ${formatUnits(this.protocolBalance!.confirmed, 8)} confirmed<br />
-                        ${formatUnits(this.protocolBalance!.unconfirmed, 8)} unconfirmed
-                      </span>`
-                  )}
-                </div>
-                <span class="text-xs">$0.00</span>
-              `,
+              (this.protocolBalance?.total ?? 0) >= 0,
+              () => html` <span class="text-xs" style="color:var(--sl-color-green-500)">Balance</span> `,
               () => html`
                 <span class="text-xs" style="color:var(--sl-color-green-500)">Borrowing</span
                 ><span class="text-xs text-sl-neutral-600">@</span><span class="text-xs">2.6%</span>
-                <div class="flex text-4xl my-1 items-center">
-                  <sl-icon outline name="currency-bitcoin"></sl-icon>${Math.floor(walletState.borrowedBalance)}.<span
-                    class="text-sl-neutral-600"
-                    >${Math.floor((walletState.borrowedBalance * 1e4) % 1e4)
-                      .toString()
-                      .padStart(4, '0')}</span
-                  >
-                </div>
-                <span class="text-xs">$0.00</span>
               `
             )}
+            <div class="flex text-4xl my-1 items-center">
+              <sl-icon outline name="currency-bitcoin"></sl-icon>
+              ${Math.floor(Math.abs(this.protocolBalance?.total ?? 0) / 1e8)}.<span class="text-sl-neutral-600"
+                >${Math.floor((Math.abs(this.protocolBalance?.total ?? 0) % 1e8) / 1e4)
+                  .toString()
+                  .padStart(4, '0')}</span
+              >
+              ${when(
+                this.protocolBalance?.unconfirmed,
+                () =>
+                  html`<span class="text-xs ml-1 border-l pl-2 text-sl-neutral-600 font-light">
+                    ${formatUnits(Math.abs(this.protocolBalance!.confirmed), 8)} confirmed<br />
+                    ${formatUnits(Math.abs(this.protocolBalance!.unconfirmed), 8)} unconfirmed
+                  </span>`
+              )}
+            </div>
+            <span class="text-xs">$0.00</span>
           </div>
           <div class="mt-5 flex sm:my-auto space-x-4">
             ${when(
@@ -278,7 +264,7 @@ export class AppMain extends LitElement {
               `
             )}
             ${when(
-              this.protocolBalance?.total,
+              (this.protocolBalance?.total ?? 0) > 0,
               () => html`
                 <sl-button
                   class="supply"
@@ -307,8 +293,8 @@ export class AppMain extends LitElement {
                   () => html`
                     <sl-button
                       class="supply"
-                      variant=${walletState._borrowedBalance <= 0 ? 'default' : 'primary'}
-                      ?disabled=${walletState._borrowedBalance <= 0}
+                      variant=${(this.protocolBalance?.total ?? 0) >= 0 ? 'default' : 'primary'}
+                      ?disabled=${(this.protocolBalance?.total ?? 0) >= 0}
                       pill
                       @click=${() => this.repay()}
                     >

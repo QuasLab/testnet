@@ -10,8 +10,6 @@ bitcoin.initEccLib(ecc)
 const toXOnly = (pubKey: any) => (pubKey.length === 32 ? pubKey : pubKey.slice(1, 33))
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
-  if (!process.env.BITCOIN_KEY) throw new Error('BITCOIN_KEY is not configured')
-
   try {
     const pubKey = request.query['pub'] as string
     const address = request.query['address'] as string

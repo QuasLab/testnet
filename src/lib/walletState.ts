@@ -176,13 +176,6 @@ class WalletState extends State {
       .finally(() => (this._collateralBalancePromise = undefined)))
   }
 
-  // @property({ type: Object }) private _collateralBalance?: any[]
-  @property({ value: 0 }) _borrowedBalance = 0
-  // private _borrowedBalancePromise?: any
-  public get borrowedBalance(): number {
-    return this._borrowedBalance
-  }
-
   private _connector?: Wallet
   get connector(): Wallet | undefined {
     if (!this._connector && this.wallet) this.useWallet(this.wallet)

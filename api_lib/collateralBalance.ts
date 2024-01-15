@@ -1,10 +1,11 @@
 import { Balance } from './types.js'
 import { getSupplyP2tr } from './depositAddress.js'
 
+import mempoolJS from '@mempool/mempool.js'
+import { MempoolReturn } from '@mempool/mempool.js/lib/interfaces/index.js'
 import { Tx } from '@mempool/mempool.js/lib/interfaces/bitcoin/transactions.js'
 import { makeBitcoinAPI } from '@mempool/mempool.js/lib/services/api/index.js'
 import { script } from 'bitcoinjs-lib'
-import { mempool } from './mempool.js'
 
 function parseTxs(txs: Tx[], address: string, protocolAddress: string): number {
   var value = 0
@@ -16,13 +17,8 @@ function parseTxs(txs: Tx[], address: string, protocolAddress: string): number {
         const witness = (vin as any).witness
         if (vin.prevout.scriptpubkey_address == protocolAddress && Array.isArray(witness) && witness.length == 4) {
           const p2trScript = script.decompile(Buffer.from(witness[2], 'hex'))
-          if (p2trScript?.length == 12) {
-            if (
-              p2trScript[10].toString() == '{"p":"quas","op":"withdraw"}' ||
-              p2trScript[10].toString() == '{"p":"quas","op":"borrow"}'
-            ) {
-              sumIn += vin.prevout.value
-            }
+          if (p2trScript?.length == 12 && p2trScript[10].toString() == '{"p":"quas","op":"withdraw"}') {
+            sumIn += vin.prevout.value
           }
         }
       })
@@ -40,17 +36,17 @@ function parseTxs(txs: Tx[], address: string, protocolAddress: string): number {
         if (vout.scriptpubkey_address == protocolAddress) sumOut += vout.value
       })
       // console.log(tx.txid, 'deposit', sumOut)
-      value += sumOut
+      value += Math.min(sumOut)
     }
   })
   // console.log(value)
   return value
 }
 
-export async function protocolBalance(address: string): Promise<Balance> {
+export async function collateralBalance(address: string): Promise<Balance> {
   const {
     bitcoin: { addresses }
-  } = mempool()
+  } = mempoolJS({ hostname: 'mempool.space', network: 'testnet' }) as MempoolReturn
   const { api } = makeBitcoinAPI({ hostname: 'mempool.space', network: 'testnet' })
 
   const protocolAddress = getSupplyP2tr().address!
@@ -67,6 +63,6 @@ export async function protocolBalance(address: string): Promise<Balance> {
     confirmed += parseTxs(txs, address as string, protocolAddress)
   }
   const balance: Balance = { unconfirmed, confirmed, total: unconfirmed + confirmed }
-  console.log(balance)
+  // console.log(balance)
   return balance
 }

@@ -7,6 +7,7 @@ import '@shoelace-style/shoelace/dist/components/alert/alert'
 import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/input/input'
 import '@shoelace-style/shoelace/dist/components/dialog/dialog'
+import '@shoelace-style/shoelace/dist/components/spinner/spinner'
 import { StateController, walletState } from '../lib/walletState'
 import { SlAlert, SlDialog, SlInput } from '@shoelace-style/shoelace'
 import { formatUnits } from '../lib/units'
@@ -50,10 +51,10 @@ export class RepayPanel extends LitElement {
         new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 1200)).then(() => (this.sig2 = true)),
         new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 1200)).then(() => (this.sig3 = true))
       ])
-      walletState._borrowedBalance =
-        walletState._borrowedBalance > this.input.value!.valueAsNumber
-          ? walletState._borrowedBalance - this.input.value!.valueAsNumber
-          : 0
+      // walletState._borrowedBalance =
+      //   walletState._borrowedBalance > this.input.value!.valueAsNumber
+      //     ? walletState._borrowedBalance - this.input.value!.valueAsNumber
+      //     : 0
     } catch (e) {
       console.warn(e)
       this.alertMessage = e

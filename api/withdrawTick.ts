@@ -9,8 +9,6 @@ import { scriptOrd, scriptQuas, toXOnly } from '../api_lib/scripts.js'
 bitcoin.initEccLib(ecc)
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
-  if (!process.env.BITCOIN_KEY) throw new Error('BITCOIN_KEY is not configured')
-
   try {
     const pubKey = request.query['pub'] as string
     if (!pubKey) throw new Error('missing arg pubKey')
