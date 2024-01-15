@@ -5,6 +5,7 @@ import ecc from '@bitcoinerlab/secp256k1'
 import { getSupplyP2tr, hdKey } from '../api_lib/depositAddress.js'
 import { getJson } from '../api_lib/fetch.js'
 import { scriptQuas } from '../api_lib/scripts.js'
+import { protocolBalance } from '../api_lib/protocolBalance.js'
 
 bitcoin.initEccLib(ecc)
 
@@ -21,13 +22,14 @@ export default async function handler(request: VercelRequest, response: VercelRe
       redeemVersion: LEAF_VERSION_TAPSCRIPT
     }
     const p2tr = getSupplyP2tr(redeem)
+    const withdrawAmt = await protocolBalance(address)
     var value = 0
     const psbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
     const utxos: [] = await fetch(`https://mempool.space/testnet/api/address/${p2tr.address}/utxo`)
       .then(getJson)
       .then((utxos) =>
-        utxos.forEach((utxo: any) => {
-          if (utxo.value < 1000) return
+        utxos.map((utxo: any) => {
+          if (utxo.value < 1000 || value > withdrawAmt.total) return
           value += utxo.value
           return {
             hash: Buffer.from(utxo.txid, 'hex').reverse(),
@@ -45,7 +47,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
       )
     utxos.forEach((utxo: any) => psbt.addInput(utxo))
     if (psbt.inputCount == 0) throw new Error('No UTXO can be withdrawn')
-    psbt.addOutput({ address, value })
+    psbt.addOutput({ address, value: withdrawAmt.total })
+    psbt.addOutput({ address: p2tr.address!, value: value - withdrawAmt.total })
     psbt.signAllInputs(hdKey.derive(0)).signAllInputs(hdKey.derive(1)).finalizeAllInputs()
 
     const fastestFee = (await fetch('https://mempool.space/testnet/api/v1/fees/recommended').then(getJson)).fastestFee
@@ -54,7 +57,8 @@ export default async function handler(request: VercelRequest, response: VercelRe
     var finalPsbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
     finalPsbt.setMaximumFeeRate(fastestFee + 1)
     utxos.forEach((utxo: any) => finalPsbt.addInput(utxo))
-    finalPsbt.addOutput({ address, value: value - newFee })
+    finalPsbt.addOutput({ address, value: withdrawAmt.total - newFee })
+    finalPsbt.addOutput({ address: p2tr.address!, value: value - withdrawAmt.total })
     finalPsbt.signAllInputs(hdKey.derive(0)).signAllInputs(hdKey.derive(1)).finalizeAllInputs()
 
     var finalTx = finalPsbt.extractTransaction()

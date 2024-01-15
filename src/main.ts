@@ -20,7 +20,7 @@ import './components/supply'
 import './components/supplyTick'
 import './components/tick'
 import { SupplyPanel } from './components/supply'
-import { UTXO, walletState } from './lib/walletState'
+import { Unsubscribe, walletState } from './lib/walletState'
 import { SupplyTickPanel } from './components/supplyTick'
 import { BorrowPanel } from './components/borrow'
 import { RepayPanel } from './components/repay'
@@ -28,6 +28,7 @@ import { toast, toastImportant } from './lib/toast'
 import { getJson } from '../api_lib/fetch'
 import { formatUnits, parseUnits } from './lib/units'
 import { marketState } from './lib/marketState'
+import { Balance } from './lib/wallets'
 
 setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/')
 
@@ -57,23 +58,50 @@ export class AppMain extends LitElement {
   @state() repayPanel: Ref<RepayPanel> = createRef<RepayPanel>()
   @state() withdrawing = false
   @state() walletBalance = 0
-  @state() protocolBalance = 0
+  @state() protocolBalance?: Balance
   @state() collateralValue = 0
 
-  constructor() {
-    super()
-    walletState.subscribe((k, v) => {
-      switch (k) {
-        case '_balance':
-          this.walletBalance = v.confirmed ?? 0
-          break
-        case '_protocolBalance':
-          this.protocolBalance = 0
-          v.forEach((utxo: UTXO) => (this.protocolBalance += utxo.value))
-          break
-      }
-    })
-    marketState.subscribe(() => this.updateCollateralValue(), 'brc20Price')
+  private protocolBalanceUpdater?: Promise<any>
+  private stateUnsubscribes: Unsubscribe[] = []
+
+  connectedCallback(): void {
+    super.connectedCallback()
+    this.stateUnsubscribes.push(
+      walletState.subscribe((k, v) => {
+        switch (k) {
+          case '_balance':
+            this.walletBalance = v?.total ?? 0
+            break
+          case '_protocolBalance':
+            this.protocolBalance = v
+            break
+          case '_address':
+            if (v) {
+              walletState.updateProtocolBalance()
+              walletState.updateCollateralBalance()
+            }
+            break
+        }
+      })
+    )
+    this.stateUnsubscribes.push(marketState.subscribe(() => this.updateCollateralValue(), 'brc20Price'))
+    this.protocolBalanceUpdater ??= this.updateProtocolBalance()
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback()
+    this.protocolBalanceUpdater = undefined
+    this.stateUnsubscribes.forEach((f) => f())
+    this.stateUnsubscribes = []
+  }
+
+  async updateProtocolBalance() {
+    while (true) {
+      await walletState
+        .updateProtocolBalance()
+        .catch((e) => console.log(`failed to update protocol balance, error:`, e))
+      await new Promise((r) => setTimeout(r, 60000))
+    }
   }
 
   private updateCollateralValue() {
@@ -144,11 +172,12 @@ export class AppMain extends LitElement {
     this.withdrawing = true
     fetch(`/api/withdraw?pub=${await walletState.connector!.publicKey}&address=${walletState.address}`)
       .then(getJson)
-      .then(({ tx }) =>
+      .then(({ tx }) => {
         toastImportant(
           `Withdraw transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> sent to network.`
         )
-      )
+        walletState.updateProtocolBalance()
+      })
       .catch((e) => toast(e))
       .finally(() => (this.withdrawing = false))
   }
@@ -190,12 +219,20 @@ export class AppMain extends LitElement {
               () => html`
                 <span class="text-xs" style="color:var(--sl-color-green-500)">Balance</span>
                 <div class="flex text-4xl my-1 items-center">
-                  <sl-icon outline name="currency-bitcoin"></sl-icon>${Math.floor(this.protocolBalance / 1e8)}.<span
-                    class="text-sl-neutral-600"
-                    >${Math.floor((this.protocolBalance % 1e8) / 1e4)
+                  <sl-icon outline name="currency-bitcoin"></sl-icon>
+                  ${Math.floor(Number(this.protocolBalance?.total ?? '0') / 1e8)}.<span class="text-sl-neutral-600"
+                    >${Math.floor((Number(this.protocolBalance?.total ?? '0') % 1e8) / 1e4)
                       .toString()
                       .padStart(4, '0')}</span
                   >
+                  ${when(
+                    this.protocolBalance?.unconfirmed,
+                    () =>
+                      html`<span class="text-xs ml-1 border-l pl-2 text-sl-neutral-600 font-light">
+                        ${formatUnits(this.protocolBalance!.confirmed, 8)} confirmed<br />
+                        ${formatUnits(this.protocolBalance!.unconfirmed, 8)} unconfirmed
+                      </span>`
+                  )}
                 </div>
                 <span class="text-xs">$0.00</span>
               `,
@@ -231,7 +268,7 @@ export class AppMain extends LitElement {
               `
             )}
             ${when(
-              this.protocolBalance > 0,
+              this.protocolBalance?.total,
               () => html`
                 <sl-button
                   class="supply"

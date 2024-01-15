@@ -1,11 +1,10 @@
-import * as btc from '@scure/btc-signer'
 import { Script } from '@scure/btc-signer'
 
 export const toXOnly = (pubKey: Uint8Array) => (pubKey.length === 32 ? pubKey : pubKey.slice(1, 33))
 
 export function scriptOrd(publicKey: Uint8Array, brcJson: string) {
   return Buffer.from(
-    btc.Script.encode([
+    Script.encode([
       toXOnly(publicKey),
       'CHECKSIG',
       'OP_0',

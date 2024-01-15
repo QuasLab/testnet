@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import * as bitcoin from 'bitcoinjs-lib'
 import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341.js'
 import ecc from '@bitcoinerlab/secp256k1'
-import { getDepositP2tr, hdKey } from '../api_lib/depositAddress.js'
+import { getBrc20SupplyP2tr, hdKey } from '../api_lib/depositAddress.js'
 import { getJson } from '../api_lib/fetch.js'
 import { scriptQuas } from '../api_lib/scripts.js'
 
@@ -20,7 +20,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       output: scriptQuas(hdKey.derive(0).publicKey, hdKey.derive(1).publicKey, 'withdraw'),
       redeemVersion: LEAF_VERSION_TAPSCRIPT
     }
-    const p2tr = getDepositP2tr(pubKey, redeem)
+    const p2tr = getBrc20SupplyP2tr(pubKey, redeem)
     var value = 0
     const psbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
     const utxos: [] = await fetch(`https://mempool.space/testnet/api/address/${p2tr.address}/utxo`)

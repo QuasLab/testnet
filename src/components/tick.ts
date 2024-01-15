@@ -36,17 +36,20 @@ export class TickRow extends LitElement {
       walletState.subscribe((k, v) => {
         switch (k) {
           case '_brc20Balance':
-            this.balance = v.find((b: any) => b.tick == this.tickQ)
+            this.balance = v?.find((b: any) => b.tick == this.tickQ)
             break
           case '_collateralBalance':
-            this.collateral = v.find((b: any) => b.tick == this.tickQ)
+            this.collateral = v?.find((b: any) => b.tick == this.tickQ)
+            break
+          case '_address':
+            if (v) walletState.updateBrc20Balance()
             break
         }
       })
     )
     this.stateUnsubscribes.push(
       marketState.subscribe((_, v: Record<string, Brc20Price>) => {
-        if (this.tick) this.price = v[this.tick]?.floorPrice
+        if (this.tick) this.price = v?.[this.tick]?.floorPrice
       }, 'brc20Price')
     )
     this.priceUpdater ??= this.updateBrc20Price()

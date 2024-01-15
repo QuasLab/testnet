@@ -41,6 +41,7 @@ export class SupplyPanel extends LitElement {
       toastImportant(
         `Your transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`
       )
+      walletState.updateProtocolBalance()
       this.drawer.value?.hide()
     } catch (e) {
       console.warn(e)

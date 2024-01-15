@@ -23,17 +23,17 @@ function scriptLeaf(a: number, b: number, action: string) {
 export function getSupplyP2tr(redeem?: any) {
   return bitcoin.payments.p2tr({
     internalPubkey: Buffer.from(toXOnly(hdKey.publicKey)),
-    scriptTree: getDepositScriptTree(),
+    scriptTree: getMPCScriptTree(),
     redeem,
     network: bitcoin.networks.testnet
   })
 }
 
-export function getDepositP2tr(pubKey: string, redeem?: any) {
+export function getBrc20SupplyP2tr(pubKey: string, redeem?: any) {
   const Point = secp256k1.ProjectivePoint
   const userPoint = Point.fromHex(pubKey).multiply(secp256k1.utils.normPrivateKeyToScalar(hdKey.privateKey!))
   const userSchnorrKey = schnorr.getPublicKey(userPoint.toRawBytes().slice(1))
-  const scriptTree = getDepositScriptTree()
+  const scriptTree = getMPCScriptTree()
   // function logScript(i: any): any {
   //   return Array.isArray(i)
   //     ? i.map((i: any) => logScript(i))
@@ -54,11 +54,11 @@ export function getDepositP2tr(pubKey: string, redeem?: any) {
   })
 }
 
-export function getDepositAddress(pubKey: string) {
-  return getDepositP2tr(pubKey).address!
+export function getBrc20SupplyAddress(pubKey: string) {
+  return getBrc20SupplyP2tr(pubKey).address!
 }
 
-export function getDepositScriptTree(): Taptree {
+export function getMPCScriptTree(): Taptree {
   return [
     [
       [

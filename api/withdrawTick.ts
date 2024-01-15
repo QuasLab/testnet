@@ -3,7 +3,7 @@ import * as bitcoin from 'bitcoinjs-lib'
 import ecc from '@bitcoinerlab/secp256k1'
 import { Taptree } from 'bitcoinjs-lib/src/types.js'
 import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341.js'
-import { getDepositAddress, getDepositP2tr, hdKey } from '../api_lib/depositAddress.js'
+import { getBrc20SupplyAddress, getBrc20SupplyP2tr, hdKey } from '../api_lib/depositAddress.js'
 import { scriptOrd, scriptQuas, toXOnly } from '../api_lib/scripts.js'
 
 bitcoin.initEccLib(ecc)
@@ -58,7 +58,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         ]
       })
       value -= 153
-      revealPsbt.addOutput({ address: getDepositAddress(pubKey), value })
+      revealPsbt.addOutput({ address: getBrc20SupplyAddress(pubKey), value })
       const revealTx = revealPsbt.signAllInputs(hdKey).finalizeAllInputs().extractTransaction()
       await fetch('https://mempool.space/testnet/api/tx', {
         method: 'POST',
@@ -81,7 +81,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         output: scriptQuas(hdKey.derive(0).publicKey, hdKey.derive(1).publicKey, 'withdraw'),
         redeemVersion: LEAF_VERSION_TAPSCRIPT
       }
-      const mpcP2tr = getDepositP2tr(pubKey, mpcRedeem)
+      const mpcP2tr = getBrc20SupplyP2tr(pubKey, mpcRedeem)
       const transferPsbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
       transferPsbt.addInput({
         hash: revealTx.getHash(),

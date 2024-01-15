@@ -79,8 +79,7 @@ class WalletState extends State {
 
   private _depositaddressPromise?: Promise<string>
   public async updateDepositAddress() {
-    return (this._depositaddressPromise ??= this.getPublicKey()
-      .then((publicKey) => fetch(`/api/depositAddress?pub=${publicKey}`))
+    return (this._depositaddressPromise ??= fetch(`/api/depositAddress`)
       .then(getJson)
       .then((js) => js.address)
       .finally(() => (this._depositaddressPromise = undefined)))
@@ -135,21 +134,26 @@ class WalletState extends State {
             return { decimals: 18, ...b }
           }))
       )
-      .catch((e) => console.log(`failed to fetch brc20 balance for ${walletState.address}, error:`, e))
       .finally(() => (this._brc20BalancePromise = undefined)))
   }
 
-  @property({ type: Object }) private _protocolBalance?: UTXO[]
+  @property({ type: Object }) private _protocolBalance?: Balance
+  public get protocolBalance(): Balance | undefined {
+    if (this._protocolBalance) return this._protocolBalance
+    this.updateProtocolBalance()
+  }
+
+  public async getProtocolBalance() {
+    return this._protocolBalance ?? this.updateProtocolBalance()
+  }
+
   private _protocolBalancePromise?: any
-  public get protocolBalance(): UTXO[] | undefined {
-    if (!this._protocolBalance && !this._protocolBalancePromise) {
-      this._protocolBalancePromise = this.getDepositAddress()
-        .then((address) => fetch(`https://mempool.space/testnet/api/address/${address}/utxo`))
-        .then(getJson)
-        .then((utxos: Array<UTXO>) => (this._protocolBalance = utxos.filter((item) => item.value >= 1000)))
-        .finally(() => (this._protocolBalancePromise = undefined))
-    }
-    return this._protocolBalance
+  public async updateProtocolBalance(): Promise<Brc20Balance[]> {
+    return (this._protocolBalancePromise ??= this.getAddress()
+      .then((address) => fetch(`/api/protocolBalance?address=${address}`))
+      .then(getJson)
+      .then((balance) => (this._protocolBalance = balance))
+      .finally(() => (this._protocolBalancePromise = undefined)))
   }
 
   @property({ type: Object }) private _collateralBalance?: Brc20Balance[]
@@ -169,7 +173,6 @@ class WalletState extends State {
       .then((res) => res.json())
       .then((res) => res.data.balance)
       .then((balances) => (this._collateralBalance = balances))
-      .catch((e) => console.log(`failed to fetch brc20 balance for ${walletState.depositBrc20address}, error:`, e))
       .finally(() => (this._collateralBalancePromise = undefined)))
   }
 

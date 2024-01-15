@@ -1,3 +1,7 @@
+import { type Balance } from '../../../api_lib/types'
+
+export { type Balance } from '../../../api_lib/types'
+
 export interface Wallet {
   installed: boolean
   network: Promise<Network>
@@ -23,12 +27,6 @@ export interface Wallet {
   signPsbts(psbtHexs: string[], options?: SignPsbtOptions): Promise<string[]>
   /** @returns txid */
   pushPsbt(psbtHex: string): Promise<string>
-}
-
-export type Balance = {
-  confirmed: number
-  unconfirmed: number
-  total: number
 }
 
 export type Inscription = {
