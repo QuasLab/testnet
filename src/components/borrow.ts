@@ -17,7 +17,6 @@ import { formatUnits } from '../lib/units'
 @customElement('borrow-panel')
 export class BorrowPanel extends LitElement {
   static styles = [unsafeCSS(baseStyle)]
-  @property() tick = ''
   @property() max = 0
   @state() input: Ref<SlInput> = createRef<SlInput>()
   @state() dialog: Ref<SlDialog> = createRef<SlDialog>()

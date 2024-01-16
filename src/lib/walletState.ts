@@ -28,7 +28,9 @@ export type UTXO = {
 
 class WalletState extends State {
   @storage({ key: 'wallet' }) @property() wallet?: WalletType
+  private promises: Record<string, Promise<any>> = {}
 
+  // ---- address ----
   @property({ skipReset: true }) private _address?: string
   public get address(): string | undefined {
     if (!this._address) this.updateAddress()
@@ -38,14 +40,19 @@ class WalletState extends State {
     return this._address ?? this.updateAddress()
   }
 
-  private _addressPromise?: Promise<string>
-  public async updateAddress() {
-    return (this._addressPromise ??= this.getConnector()
+  public async updateAddress(): Promise<string> {
+    return (this.promises['address'] ??= this.getConnector()
       .then((connector) => connector.accounts)
       .then((accounts) => (this._address = accounts[0]))
-      .finally(() => (this._addressPromise = undefined)))
+      .finally(() => delete this.promises['address']))
   }
 
+  protected onAccountChanged = (accounts: string[]) => {
+    this.reset(false)
+    if (accounts) this._address = accounts[0]
+  }
+
+  // ---- public key ----
   @property() private _publicKey?: string
   public get publicKey(): string | undefined {
     if (this._publicKey) return this._publicKey
@@ -55,19 +62,14 @@ class WalletState extends State {
     return this._publicKey ?? this.updatePublicKey()
   }
 
-  protected onAccountChanged = (accounts: string[]) => {
-    this.reset(false)
-    if (accounts) this._address = accounts[0]
-  }
-
-  private _publicKeyPromise?: Promise<string>
   public async updatePublicKey() {
-    return (this._publicKeyPromise ??= this.getConnector()
+    return (this.promises['publicKey'] ??= this.getConnector()
       .then((connector) => connector.publicKey)
       .then((pubKey) => (this._publicKey = pubKey))
-      .finally(() => (this._publicKeyPromise = undefined)))
+      .finally(() => delete this.promises['publicKey']))
   }
 
+  // ---- deposit address ----
   @property() private _depositaddress?: string
   public get depositaddress(): string | undefined {
     if (this._depositaddress) return this._depositaddress
@@ -77,14 +79,14 @@ class WalletState extends State {
     return this._depositaddress ?? this.updateDepositAddress()
   }
 
-  private _depositaddressPromise?: Promise<string>
   public async updateDepositAddress() {
-    return (this._depositaddressPromise ??= fetch(`/api/depositAddress`)
+    return (this.promises['depositAddress'] ??= fetch(`/api/depositAddress`)
       .then(getJson)
       .then((js) => js.address)
-      .finally(() => (this._depositaddressPromise = undefined)))
+      .finally(() => delete this.promises['depositAddress']))
   }
 
+  // ---- brc20 deposit address ----
   @property() private _depositBrc20address?: string
   public get depositBrc20address(): string | undefined {
     if (this._depositBrc20address) return this._depositBrc20address
@@ -94,26 +96,33 @@ class WalletState extends State {
     return this._depositBrc20address ?? this.updateDepositBrc20Address()
   }
 
-  private _depositBrc20addressPromise?: Promise<string>
   public async updateDepositBrc20Address() {
-    return (this._depositBrc20addressPromise ??= this.getPublicKey()
+    return (this.promises['depositBrc20Address'] ??= this.getPublicKey()
       .then((publicKey) => fetch(`/api/depositBrc20Address?pub=${publicKey}`))
       .then(getJson)
       .then((js) => js.address)
-      .finally(() => (this._depositBrc20addressPromise = undefined)))
+      .finally(() => delete this.promises['depositBrc20Address']))
   }
 
+  // ---- balance ----
   @property({ type: Object }) private _balance?: Balance
-  private _balancePromise?: Promise<Balance>
   public get balance(): Balance | undefined {
-    if (!this._balance && !this._balancePromise)
-      this._balancePromise = this.getConnector()
-        .then((connector) => connector.balance)
-        .then((balance) => (this._balance = balance))
-        .finally(() => (this._balancePromise = undefined))
-    return this._balance
+    if (this._balance) return this._balance
+    this.updateBalance()
   }
 
+  public async getBalance() {
+    return this._balance ?? this.updateBalance()
+  }
+
+  public async updateBalance(): Promise<Balance> {
+    return (this.promises['balance'] ??= this.getConnector()
+      .then((connector) => connector.balance)
+      .then((balance) => (this._balance = balance))
+      .finally(() => delete this.promises['balance']))
+  }
+
+  // ---- brc20 balances ----
   @property({ type: Array }) private _brc20Balance?: Brc20Balance[]
   public get brc20Balance(): Brc20Balance[] | undefined {
     if (this._brc20Balance) return this._brc20Balance
@@ -123,9 +132,8 @@ class WalletState extends State {
     return this._brc20Balance ?? this.updateBrc20Balance()
   }
 
-  private _brc20BalancePromise?: any
   public async updateBrc20Balance(): Promise<Brc20Balance[]> {
-    return (this._brc20BalancePromise ??= this.getAddress()
+    return (this.promises['brc20Balance'] ??= this.getAddress()
       .then((address) => fetch(`${import.meta.env.VITE_ORD_BASE_URL}/api/v1/brc20/address/${address}/balance`))
       .then((res) => res.json())
       .then(
@@ -134,9 +142,10 @@ class WalletState extends State {
             return { decimals: 18, ...b }
           }))
       )
-      .finally(() => (this._brc20BalancePromise = undefined)))
+      .finally(() => delete this.promises['brc20Balance']))
   }
 
+  // ---- protocol balance ----
   @property({ type: Object }) private _protocolBalance?: Balance
   public get protocolBalance(): Balance | undefined {
     if (this._protocolBalance) return this._protocolBalance
@@ -147,15 +156,15 @@ class WalletState extends State {
     return this._protocolBalance ?? this.updateProtocolBalance()
   }
 
-  private _protocolBalancePromise?: any
-  public async updateProtocolBalance(): Promise<Brc20Balance[]> {
-    return (this._protocolBalancePromise ??= this.getAddress()
+  public async updateProtocolBalance(): Promise<Balance> {
+    return (this.promises['protocolBalance'] ??= this.getAddress()
       .then((address) => fetch(`/api/protocolBalance?address=${address}`))
       .then(getJson)
       .then((balance) => (this._protocolBalance = balance))
-      .finally(() => (this._protocolBalancePromise = undefined)))
+      .finally(() => delete this.promises['protocolBalance']))
   }
 
+  // ---- collateral balance ----
   @property({ type: Object }) private _collateralBalance?: Brc20Balance[]
   public get collateralBalance(): Brc20Balance[] | undefined {
     if (this._collateralBalance) return this._collateralBalance
@@ -166,32 +175,31 @@ class WalletState extends State {
     return this._collateralBalance ?? this.updateCollateralBalance()
   }
 
-  private _collateralBalancePromise?: any
   public async updateCollateralBalance(): Promise<Brc20Balance[]> {
-    return (this._collateralBalancePromise ??= this.getDepositBrc20Address()
+    return (this.promises['collateralBalance'] ??= this.getDepositBrc20Address()
       .then((address) => fetch(`${import.meta.env.VITE_ORD_BASE_URL}/api/v1/brc20/address/${address}/balance`))
       .then((res) => res.json())
       .then((res) => res.data.balance)
       .then((balances) => (this._collateralBalance = balances))
-      .finally(() => (this._collateralBalancePromise = undefined)))
+      .finally(() => delete this.promises['collateralBalance']))
   }
 
+  // --- wallet connector ----
   private _connector?: Wallet
   get connector(): Wallet | undefined {
     if (!this._connector && this.wallet) this.useWallet(this.wallet)
 
     return this._connector
   }
-  private _connectorPromise?: Promise<Wallet>
   /** Get an available connector, will wait until one is ready */
   public async getConnector(): Promise<Wallet> {
     return (
       this.connector ??
-      (this._connectorPromise ??= new Promise<Wallet>((resolve) => {
+      (this.promises['connector'] ??= new Promise<Wallet>((resolve) => {
         this.subscribe((_, v) => {
           if (v) {
             resolve(v)
-            this._connectorPromise = undefined
+            delete this.promises['connector']
           }
         }, '_connector')
       }))
@@ -221,6 +229,7 @@ class WalletState extends State {
       .forEach(([key, definition]) => {
         ;(this as {} as { [key: string]: unknown })[key as string] = definition.resetValue
       })
+    this.promises = {}
     if (resetConnectorAndAddress) {
       this._connector?.removeListener('accountsChanged', this.onAccountChanged)
       this._connector = undefined

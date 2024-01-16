@@ -75,6 +75,10 @@ export class AppMain extends LitElement {
           case '_protocolBalance':
             this.protocolBalance = v
             break
+          case '_collateralBalance':
+            this.collateralValue = 0
+            if (v) this.updateCollateralValue()
+            break
           case '_address':
             if (v) {
               walletState.updateProtocolBalance()
@@ -195,7 +199,8 @@ export class AppMain extends LitElement {
   }
 
   async repay() {
-    this.repayPanel.value?.show()
+    this.repayPanel.value!.max = this.protocolBalance?.total ?? 0
+    this.repayPanel.value!.show()
   }
 
   formatPrice(price?: string) {
