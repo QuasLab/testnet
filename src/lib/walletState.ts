@@ -218,7 +218,7 @@ class WalletState extends State {
       default:
         throw new Error(`unsupported wallet type: ${type}`)
     }
-    this._connector.on('accountsChanged', this.onAccountChanged)
+    if (this._connector.installed) this._connector.on('accountsChanged', this.onAccountChanged)
   }
 
   reset(resetConnectorAndAddress = true): void {
@@ -231,7 +231,7 @@ class WalletState extends State {
       })
     this.promises = {}
     if (resetConnectorAndAddress) {
-      this._connector?.removeListener('accountsChanged', this.onAccountChanged)
+      if (this._connector?.installed) this._connector.removeListener('accountsChanged', this.onAccountChanged)
       this._connector = undefined
       this._address = undefined
     }
