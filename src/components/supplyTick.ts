@@ -17,7 +17,7 @@ export class SupplyTickPanel extends LitElement {
   static styles = [unsafeCSS(baseStyle), unsafeCSS(style)]
   @property() tick = ''
   @property() max = 0n
-  @property() decimals = 18
+  @property() decimals = 0
   @state() drawer: Ref<SlDrawer> = createRef<SlDrawer>()
   @state() input: Ref<SlInput> = createRef<SlInput>()
   @state() inputValue = 0
@@ -73,6 +73,7 @@ export class SupplyTickPanel extends LitElement {
             Reveal: <a href="https://mempool.space/testnet/tx/${revealTx}">${revealTx}</a><br/>
             Now supply to protocol`
       ).alert
+      console.log(revealTx)
       const supplyTx = await walletState.connector?.sendInscription(
         await walletState.getDepositBrc20Address(),
         `${revealTx}i0`

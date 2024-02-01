@@ -134,12 +134,12 @@ class WalletState extends State {
 
   public async updateBrc20Balance(): Promise<Brc20Balance[]> {
     return (this.promises['brc20Balance'] ??= this.getAddress()
-      .then((address) => fetch(`${import.meta.env.VITE_ORD_BASE_URL}/api/v1/brc20/address/${address}/balance`))
+      .then((address) => fetch(`/api/brc20Balance?address=${address}`))
       .then((res) => res.json())
       .then(
         (res) =>
-          (this._brc20Balance = res.data.balance.map((b: any) => {
-            return { decimals: 18, ...b }
+          (this._brc20Balance = res.data.detail.map((b: any) => {
+            return { tick: b.ticker, ...b }
           }))
       )
       .finally(() => delete this.promises['brc20Balance']))
@@ -177,9 +177,9 @@ class WalletState extends State {
 
   public async updateCollateralBalance(): Promise<Brc20Balance[]> {
     return (this.promises['collateralBalance'] ??= this.getDepositBrc20Address()
-      .then((address) => fetch(`${import.meta.env.VITE_ORD_BASE_URL}/api/v1/brc20/address/${address}/balance`))
+      .then((address) => fetch(`/api/brc20Balance?address=${address}`))
       .then((res) => res.json())
-      .then((res) => res.data.balance)
+      .then((res) => res.data.detail)
       .then((balances) => (this._collateralBalance = balances))
       .finally(() => delete this.promises['collateralBalance']))
   }

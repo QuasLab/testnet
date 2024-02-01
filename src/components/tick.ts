@@ -200,7 +200,9 @@ export class TickRow extends LitElement {
           </span>
         </p>
         <p class="text-sl-neutral-600">
-          ${this.balance?.overallBalance ? formatUnitsComma(this.balance.overallBalance, this.balance.decimals) : '-'}
+          ${this.balance?.overallBalance
+            ? formatUnitsComma(parseUnits(this.balance.overallBalance, this.balance.decimals))
+            : '-'}
           in wallet
         </p>
       </div>
