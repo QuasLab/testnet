@@ -148,7 +148,7 @@ export class AppMain extends LitElement {
     this.supplyTickPanel.value!.max = 0n
     walletState
       .getBrc20Balance()
-      .then((balances) => balances.find((b) => b.tick == tick.replace(/.$/, 'Q')))
+      .then((balances) => balances.find((b) => b.ticker == tick.replace(/.$/, 'Q')))
       .then((b) => b && (this.supplyTickPanel.value!.max = BigInt(b.availableBalance)))
     this.supplyTickPanel.value?.show()
   }
