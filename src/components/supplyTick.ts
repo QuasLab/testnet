@@ -66,6 +66,25 @@ export class SupplyTickPanel extends LitElement {
           toSignInputs: [{ index: 0, publicKey, disableTweakSigner: true }]
         })
         .then((hex) => walletState.connector?.pushPsbt(hex))
+      console.log(`sending inscription: ${revealTx}i0`)
+      await alert.hide()
+      alert = toastImportant(
+        `Transfer transactions sent to network.<br>
+            Inscription: <a href="https://mempool.space/testnet/tx/${inscribeTx}">${inscribeTx}</a><br/>
+            Reveal: <a href="https://mempool.space/testnet/tx/${revealTx}">${revealTx}</a><br/>
+            Now wait for inscription in wallet<sl-spinner></sl-spinner>`
+      ).alert
+      loop1: while (true) {
+        const inscriptions = await walletState.connector?.getInscriptions()
+        console.log(inscriptions)
+        if (inscriptions?.total) {
+          for (const inscription of inscriptions.list) {
+            if (inscription.genesisTransaction == revealTx) break loop1
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500))
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500))
       await alert.hide()
       alert = toastImportant(
         `Transfer transactions sent to network.<br>
@@ -73,7 +92,6 @@ export class SupplyTickPanel extends LitElement {
             Reveal: <a href="https://mempool.space/testnet/tx/${revealTx}">${revealTx}</a><br/>
             Now supply to protocol`
       ).alert
-      console.log(revealTx)
       const supplyTx = await walletState.connector?.sendInscription(
         await walletState.getDepositBrc20Address(),
         `${revealTx}i0`

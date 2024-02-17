@@ -73,6 +73,7 @@ export class ConnectButton extends LitElement {
 
   async updateBalance() {
     const result = await fetch(`/api/brc20Balance?address=${walletState.address}`).then(getJson)
+    console.log('update brc20 balance:', JSON.stringify(result.data))
     const balance = result.data?.detail
     if (Array.isArray(balance)) this.ticks = balance.length
   }

@@ -68,7 +68,7 @@ export class BorrowPanel extends LitElement {
     fetch(`/api/borrow?address=${walletState.address}&amt=${this.input.value?.valueAsNumber}`)
       .then(getJson)
       .then(({ tx }) => {
-        Promise.all([
+        return Promise.all([
           new Promise((r) => setTimeout(r, 500 + Math.random() * 2000)).then(() => (this.sig1 = true)),
           new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000)).then(() => (this.sig2 = true))
         ]).then(() => tx)

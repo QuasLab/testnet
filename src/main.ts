@@ -115,18 +115,27 @@ export class AppMain extends LitElement {
       const priceMul = parseUnits((10 ** priceDecimals).toString(), 0)
       for (let tick in marketState.brc20Price) {
         const price = marketState.brc20Price[tick]
-        const balance = balances.find((b) => b.tick == tick.replace(/.$/, 'Q'))
+        const balance = balances.find((b) => b.ticker == tick.replace(/.$/, 'Q'))
+        console.debug(
+          'update collateral value, ticker:',
+          tick,
+          'price:',
+          JSON.stringify(price),
+          'balance:',
+          JSON.stringify(balance)
+        )
         if (!price || !balance) return
         value = value.add(
           parseUnits(
             formatUnits(
-              parseUnits(balance.overallBalance, 0).mul(parseUnits(price.floorPrice, 18)).div(priceMul),
+              parseUnits(balance.overallBalance, 18).mul(parseUnits(price.floorPrice, 18)).div(priceMul),
               balance.decimals
             )
           )
         )
       }
       this.collateralValue = parseFloat(Number(formatUnits(value)).toFixed(8))
+      console.log('update collateral value:', this.collateralValue)
     })
   }
 

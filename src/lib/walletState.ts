@@ -7,7 +7,7 @@ import { getJson } from '../../api_lib/fetch'
 export { StateController, type Unsubscribe } from '@lit-app/state'
 
 export type Brc20Balance = {
-  tick: string
+  ticker: string
   decimals: number
   availableBalance: string
   transferableBalance: string
@@ -118,7 +118,11 @@ class WalletState extends State {
   public async updateBalance(): Promise<Balance> {
     return (this.promises['balance'] ??= this.getConnector()
       .then((connector) => connector.balance)
-      .then((balance) => (this._balance = balance))
+      .then((balance) => {
+        console.log('update balance:', JSON.stringify(balance))
+        this._balance = balance
+        return balance
+      })
       .finally(() => delete this.promises['balance']))
   }
 
@@ -136,12 +140,12 @@ class WalletState extends State {
     return (this.promises['brc20Balance'] ??= this.getAddress()
       .then((address) => fetch(`/api/brc20Balance?address=${address}`))
       .then((res) => res.json())
-      .then(
-        (res) =>
-          (this._brc20Balance = res.data.detail.map((b: any) => {
-            return { tick: b.ticker, ...b }
-          }))
-      )
+      .then((res) => {
+        console.log('update brc20 balance:', JSON.stringify(res.data))
+        this._brc20Balance = res.data.detail.map((b: any) => {
+          return { tick: b.ticker, ...b }
+        })
+      })
       .finally(() => delete this.promises['brc20Balance']))
   }
 
@@ -179,7 +183,10 @@ class WalletState extends State {
     return (this.promises['collateralBalance'] ??= this.getDepositBrc20Address()
       .then((address) => fetch(`/api/brc20Balance?address=${address}`))
       .then((res) => res.json())
-      .then((res) => res.data.detail)
+      .then((res) => {
+        console.log('update collateral balance:', JSON.stringify(res.data))
+        return res.data.detail
+      })
       .then((balances) => (this._collateralBalance = balances))
       .finally(() => delete this.promises['collateralBalance']))
   }

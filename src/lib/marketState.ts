@@ -22,6 +22,7 @@ class MarketState extends State {
       .then((res) => {
         const price = res?.data?.data?.[0]
         this.brc20Price[tick] = { tick, floorPrice: price.floorPrice, btcVolume: price.totalVolume }
+        console.log('update brc20 price:', JSON.stringify(this.brc20Price))
         this.dispatchEvent(new StateEvent('brc20Price', this.brc20Price, this))
         return this.brc20Price[tick]
       })
