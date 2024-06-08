@@ -12,9 +12,8 @@ import { toast, toastImportant } from '../lib/toast'
 import { formatUnits } from '../lib/units'
 import { getJson } from '../../api_lib/fetch'
 import * as btc from '@scure/btc-signer'
-import * as ordinals from 'micro-ordinals'
 import { hex, utf8 } from '@scure/base'
-import { toXOnlyU8 } from '../lib/utils'
+import { prepareInscription } from '../lib/inscribe'
 
 @customElement('supply-tick-panel')
 export class SupplyTickPanel extends LitElement {
@@ -48,49 +47,17 @@ export class SupplyTickPanel extends LitElement {
 
       if (!address) throw new Error('failed to get wallet address')
 
-      const customScripts = [ordinals.OutOrdinalReveal]
-
-      const inscription = {
-        tags: { contentType: 'text/plain;charset=utf-8' },
-        body: utf8.decode(JSON.stringify({ p: 'brc-20', op: 'transfer', tick: this.tickQ, amt: amt.toString() }))
-      }
-
-      // fake transfer to calculate fee
-      const fakePrivKey = hex.decode('0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a')
-      const fakePayment = btc.p2tr(
-        undefined,
-        ordinals.p2tr_ord_reveal(btc.utils.pubSchnorr(fakePrivKey), [inscription]),
-        btc.TEST_NETWORK,
-        false,
-        customScripts
-      )
-
-      const fakeAmount = 2000n
-      const fakeFee = 500n
-
-      const fakeTx = new btc.Transaction({ customScripts })
-      fakeTx.addInput({
-        ...fakePayment,
-        txid: '75ddabb27b8845f5247975c8a5ba7c6f336c4570708ebe230caf6db5217ae858',
-        index: 0,
-        witnessUtxo: { script: fakePayment.script, amount: fakeAmount }
-      })
-      fakeTx.addOutputAddress(address, fakeAmount - fakeFee, btc.TEST_NETWORK)
-      // fake signing to finalize and calculate vsize
-      fakeTx.signIdx(fakePrivKey, 0, undefined, new Uint8Array(32))
-      fakeTx.finalize()
-      const fee = BigInt(Math.max(300, feeRates.minimumFee, fakeTx.vsize * feeRates.fastestFee))
-
-      // real inscribe and reveal
-      const revealPayment = btc.p2tr(
-        undefined,
-        ordinals.p2tr_ord_reveal(toXOnlyU8(hex.decode(pubKey)), [inscription]),
-        btc.TEST_NETWORK,
-        false,
-        customScripts
+      const { inscription, customScripts, revealPayment, fee } = prepareInscription(
+        this.tickQ,
+        'transfer',
+        amt,
+        address,
+        pubKey,
+        feeRates
       )
       await alert.hide()
 
+      // real inscribe and reveal
       const value = 600n
       alert = toastImportant(
         `Inscribing <span style="white-space:pre-wrap">${utf8.encode(
@@ -110,6 +77,9 @@ export class SupplyTickPanel extends LitElement {
       }
       await alert.hide()
 
+      alert = toastImportant(
+        `Revealing <span style="white-space:pre-wrap">${utf8.encode(inscription.body)}</span>`
+      ).alert
       const tx = new btc.Transaction({ customScripts })
       tx.addInput({
         ...revealPayment,
@@ -119,9 +89,6 @@ export class SupplyTickPanel extends LitElement {
       })
       tx.addOutputAddress(address, BigInt(value), btc.TEST_NETWORK)
       const psbt = tx.toPSBT()
-      alert = toastImportant(
-        `Revealing <span style="white-space:pre-wrap">${utf8.encode(inscription.body)}</span>`
-      ).alert
       const revealTx = await walletState.connector
         ?.signPsbt(hex.encode(psbt), {
           autoFinalized: true,

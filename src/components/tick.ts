@@ -11,6 +11,9 @@ import { formatUnits, formatUnitsComma, parseUnits } from '../lib/units'
 import { toast, toastImportant } from '../lib/toast'
 import { getJson } from '../../api_lib/fetch'
 import { Brc20Price, marketState } from '../lib/marketState'
+import * as btc from '@scure/btc-signer'
+import { hex, utf8 } from '@scure/base'
+import { prepareInscription } from '../lib/inscribe'
 
 @customElement('tick-row')
 export class TickRow extends LitElement {
@@ -84,32 +87,54 @@ export class TickRow extends LitElement {
     const tick = this.tickQ!
     this.minting = true
     var { alert } = toastImportant(`Preparing inscribe transaction`)
-    Promise.all([walletState.connector!.publicKey, walletState.connector?.accounts])
-      .then(async ([publicKey, accounts]) => {
-        const insRes = await fetch(
-          `/api/brc20Op?op=mint&amt=1000&tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}`
-        ).then(getJson)
-        const { address, data } = insRes
-        if (!address || !data) {
-          console.debug('get inscription tx returns:', insRes)
-          throw new Error(`failed to get brc20 mint inscription address, server returns ${JSON.stringify(insRes)}`)
+    Promise.all([
+      walletState.getPublicKey(),
+      walletState.getAddress(),
+      fetch('https://mempool.space/testnet/api/v1/fees/recommended').then(getJson)
+    ])
+      .then(async ([publicKey, address, feeRates]) => {
+        if (!address) throw new Error('failed to get wallet address')
+        const { inscription, customScripts, revealPayment, fee } = prepareInscription(
+          tick,
+          'mint',
+          1000,
+          address,
+          publicKey,
+          feeRates
+        )
+        await alert.hide()
+
+        const value = 600n
+        alert = toastImportant(
+          `Inscribing <span style="white-space:pre-wrap">${utf8.encode(inscription.body)}</span>`
+        ).alert
+        const txid = await walletState.connector?.sendBitcoin(revealPayment.address!, Number(value + fee))
+        await alert.hide()
+
+        alert = toastImportant(`Waiting for inscription to be announced in mempool<sl-spinner></sl-spinner>`).alert
+        while (true) {
+          const res = await fetch(`https://mempool.space/testnet/api/tx/${txid}/status`)
+          if (res.status == 200) {
+            break
+          }
+          await new Promise((r) => setTimeout(r, 1000))
         }
         await alert.hide()
-        alert = toastImportant(`Inscribing <span style="white-space:pre-wrap">${data}</span>`).alert
-        const txid = await walletState.connector?.sendBitcoin(address, 699)
-        await alert.hide()
-        alert = toastImportant(`Preparing reveal transaction`).alert
-        const res = await fetch(
-          `/api/brc20Op?op=mint&amt=1000&tick=${tick}&pub=${publicKey}&address=${accounts?.[0]}&txid=${txid}`
-        ).then(getJson)
-        if (!res.psbt) {
-          console.error('reveal tx not generated', res)
-          throw new Error('reveal tx not generated')
-        }
-        await alert.hide()
-        alert = toastImportant(`Revealing <span style="white-space:pre-wrap">${data}</span>`).alert
+
+        alert = toastImportant(
+          `Revealing <span style="white-space:pre-wrap">${utf8.encode(inscription.body)}</span>`
+        ).alert
+        const tx = new btc.Transaction({ customScripts })
+        tx.addInput({
+          ...revealPayment,
+          txid,
+          index: 0,
+          witnessUtxo: { script: revealPayment.script, amount: value + fee }
+        })
+        tx.addOutputAddress(address, BigInt(value), btc.TEST_NETWORK)
+        const psbt = tx.toPSBT()
         await walletState.connector
-          ?.signPsbt(res.psbt, {
+          ?.signPsbt(hex.encode(psbt), {
             autoFinalized: true,
             toSignInputs: [{ index: 0, publicKey, disableTweakSigner: true }]
           })
