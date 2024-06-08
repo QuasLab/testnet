@@ -4,10 +4,9 @@ import * as btc from '@scure/btc-signer'
 import ecc from '@bitcoinerlab/secp256k1'
 import { Taptree } from 'bitcoinjs-lib/src/types.js'
 import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341.js'
+import { toXOnly } from '../api_lib/utils'
 
 bitcoin.initEccLib(ecc)
-
-const toXOnly = (pubKey: any) => (pubKey.length === 32 ? pubKey : pubKey.slice(1, 33))
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   try {

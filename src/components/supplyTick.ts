@@ -11,6 +11,10 @@ import { SlDrawer, SlInput } from '@shoelace-style/shoelace'
 import { toast, toastImportant } from '../lib/toast'
 import { formatUnits } from '../lib/units'
 import { getJson } from '../../api_lib/fetch'
+import * as btc from '@scure/btc-signer'
+import * as ordinals from 'micro-ordinals'
+import { hex, utf8 } from '@scure/base'
+import { toXOnlyU8 } from '../lib/utils'
 
 @customElement('supply-tick-panel')
 export class SupplyTickPanel extends LitElement {
@@ -33,37 +37,95 @@ export class SupplyTickPanel extends LitElement {
 
   private async addSupply() {
     this.adding = true
-    const amt = this.input.value?.valueAsNumber
+    const amt = this.input.value!.valueAsNumber
     var { alert } = toastImportant(`Preparing inscribe transaction`)
     try {
-      const [publicKey, address] = await Promise.all([walletState.getPublicKey(), walletState.getAddress()])
-      const { data, address: inscribeAddress } = await fetch(
-        `/api/brc20Op?op=transfer&amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${address}`
-      ).then(getJson)
+      const [pubKey, address, feeRates] = await Promise.all([
+        walletState.getPublicKey(),
+        walletState.getAddress(),
+        fetch('https://mempool.space/testnet/api/v1/fees/recommended').then(getJson)
+      ])
 
-      if (!address) throw new Error('failed to get deposit address')
-      if (!inscribeAddress) throw new Error('failed to get brc20 transfer inscription address')
+      if (!address) throw new Error('failed to get wallet address')
+
+      const customScripts = [ordinals.OutOrdinalReveal]
+
+      const inscription = {
+        tags: { contentType: 'text/plain;charset=utf-8' },
+        body: utf8.decode(JSON.stringify({ p: 'brc-20', op: 'transfer', tick: this.tickQ, amt: amt.toString() }))
+      }
+
+      // fake transfer to calculate fee
+      const fakePrivKey = hex.decode('0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a')
+      const fakePayment = btc.p2tr(
+        undefined,
+        ordinals.p2tr_ord_reveal(btc.utils.pubSchnorr(fakePrivKey), [inscription]),
+        btc.TEST_NETWORK,
+        false,
+        customScripts
+      )
+
+      const fakeAmount = 2000n
+      const fakeFee = 500n
+
+      const fakeTx = new btc.Transaction({ customScripts })
+      fakeTx.addInput({
+        ...fakePayment,
+        txid: '75ddabb27b8845f5247975c8a5ba7c6f336c4570708ebe230caf6db5217ae858',
+        index: 0,
+        witnessUtxo: { script: fakePayment.script, amount: fakeAmount }
+      })
+      fakeTx.addOutputAddress(address, fakeAmount - fakeFee, btc.TEST_NETWORK)
+      // fake signing to finalize and calculate vsize
+      fakeTx.signIdx(fakePrivKey, 0, undefined, new Uint8Array(32))
+      fakeTx.finalize()
+      const fee = BigInt(Math.max(300, feeRates.minimumFee, fakeTx.vsize * feeRates.fastestFee))
+
+      // real inscribe and reveal
+      const revealPayment = btc.p2tr(
+        undefined,
+        ordinals.p2tr_ord_reveal(toXOnlyU8(hex.decode(pubKey)), [inscription]),
+        btc.TEST_NETWORK,
+        false,
+        customScripts
+      )
       await alert.hide()
 
-      alert = toastImportant(`Inscribing <span style="white-space:pre-wrap">${data}</span>`).alert
-      const inscribeTx = await walletState.connector?.sendBitcoin(inscribeAddress, 699)
+      const value = 600n
+      alert = toastImportant(
+        `Inscribing <span style="white-space:pre-wrap">${utf8.encode(
+          inscription.body
+        )}</span>, value: ${value}, fee: ${fee}`
+      ).alert
+      const inscribeTx = await walletState.connector?.sendBitcoin(revealPayment.address!, Number(value + fee))
       await alert.hide()
 
-      alert = toastImportant(`Preparing reveal transaction`).alert
-      const res = await fetch(
-        `/api/brc20Op?op=transfer&amt=${amt}&tick=${this.tickQ}&pub=${publicKey}&address=${address}&txid=${inscribeTx}`
-      ).then(getJson)
-      if (!res.psbt) {
-        console.error('reveal tx not generated', res)
-        throw new Error('reveal tx not generated')
+      alert = toastImportant(`Waiting for inscription to be announced in mempool<sl-spinner></sl-spinner>`).alert
+      while (true) {
+        const res = await fetch(`https://mempool.space/testnet/api/tx/${inscribeTx}/status`)
+        if (res.status == 200) {
+          break
+        }
+        await new Promise((r) => setTimeout(r, 1000))
       }
       await alert.hide()
 
-      alert = toastImportant(`Revealing <span style="white-space:pre-wrap">${data}</span>`).alert
+      const tx = new btc.Transaction({ customScripts })
+      tx.addInput({
+        ...revealPayment,
+        txid: inscribeTx,
+        index: 0,
+        witnessUtxo: { script: revealPayment.script, amount: value + fee }
+      })
+      tx.addOutputAddress(address, BigInt(value), btc.TEST_NETWORK)
+      const psbt = tx.toPSBT()
+      alert = toastImportant(
+        `Revealing <span style="white-space:pre-wrap">${utf8.encode(inscription.body)}</span>`
+      ).alert
       const revealTx = await walletState.connector
-        ?.signPsbt(res.psbt, {
+        ?.signPsbt(hex.encode(psbt), {
           autoFinalized: true,
-          toSignInputs: [{ index: 0, publicKey, disableTweakSigner: true }]
+          toSignInputs: [{ index: 0, publicKey: pubKey, disableTweakSigner: true }]
         })
         .then((hex) => walletState.connector?.pushPsbt(hex))
       console.log(`sending inscription: ${revealTx}i0`)

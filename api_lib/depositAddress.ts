@@ -2,8 +2,9 @@ import { schnorr, secp256k1 } from '@noble/curves/secp256k1'
 import { Taptree } from 'bitcoinjs-lib/src/types'
 import * as bitcoin from 'bitcoinjs-lib'
 import * as ecc from '@bitcoinerlab/secp256k1'
-import { scriptQuas, toXOnly } from './scripts.js'
+import { scriptQuas } from './scripts.js'
 import { BIP32Factory, BIP32Interface } from 'bip32'
+import { toXOnly } from './utils.js'
 
 bitcoin.initEccLib(ecc)
 const bip32 = BIP32Factory(ecc)

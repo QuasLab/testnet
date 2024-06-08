@@ -4,7 +4,8 @@ import ecc from '@bitcoinerlab/secp256k1'
 import { Taptree } from 'bitcoinjs-lib/src/types.js'
 import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341.js'
 import { getBrc20SupplyAddress, getBrc20SupplyP2tr, hdKey } from '../api_lib/depositAddress.js'
-import { scriptOrd, scriptQuas, toXOnly } from '../api_lib/scripts.js'
+import { scriptOrd, scriptQuas } from '../api_lib/scripts.js'
+import { toXOnly } from '../api_lib/utils'
 
 bitcoin.initEccLib(ecc)
 

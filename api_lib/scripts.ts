@@ -1,11 +1,10 @@
 import { Script } from '@scure/btc-signer'
-
-export const toXOnly = (pubKey: Uint8Array) => (pubKey.length === 32 ? pubKey : pubKey.slice(1, 33))
+import { toXOnlyU8 } from './utils.js'
 
 export function scriptOrd(publicKey: Uint8Array, brcJson: string) {
   return Buffer.from(
     Script.encode([
-      toXOnly(publicKey),
+      toXOnlyU8(publicKey),
       'CHECKSIG',
       'OP_0',
       'IF',
@@ -22,9 +21,9 @@ export function scriptOrd(publicKey: Uint8Array, brcJson: string) {
 export function scriptQuas(pubKey1: Uint8Array, pubkey2: Uint8Array, action: string) {
   return Buffer.from(
     Script.encode([
-      toXOnly(pubKey1),
+      toXOnlyU8(pubKey1),
       'CHECKSIGVERIFY',
-      toXOnly(pubkey2),
+      toXOnlyU8(pubkey2),
       'CHECKSIG',
       'OP_0',
       'IF',
