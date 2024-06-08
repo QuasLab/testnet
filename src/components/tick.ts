@@ -39,7 +39,7 @@ export class TickRow extends LitElement {
             this.balance = v?.find((b: any) => b.tick == this.tickQ)
             break
           case '_collateralBalance':
-            this.collateral = v?.find((b: any) => b.tick == this.tickQ)
+            this.collateral = v?.find((b: any) => b.ticker == this.tickQ)
             break
           case '_address':
             if (v) walletState.updateBrc20Balance()
@@ -233,7 +233,7 @@ export class TickRow extends LitElement {
           parseInt(this.collateral?.overallBalance ?? '0') > 0,
           () =>
             html`<p class="text-xs text-sl-neutral-600 absolute -bottom-5 right-0">
-              ${formatUnitsComma(this.collateral?.overallBalance, this.collateral?.decimals)} in protocol
+              ${formatUnitsComma(parseUnits(this.collateral!.overallBalance, this.collateral!.decimals))} in protocol
             </p>`
         )}
       </div>

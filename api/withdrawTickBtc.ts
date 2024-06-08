@@ -5,6 +5,7 @@ import ecc from '@bitcoinerlab/secp256k1'
 import { getBrc20SupplyP2tr, hdKey } from '../api_lib/depositAddress.js'
 import { getJson } from '../api_lib/fetch.js'
 import { scriptQuas } from '../api_lib/scripts.js'
+import { minimumFee } from '../api_lib/minimumFee.js'
 
 bitcoin.initEccLib(ecc)
 
@@ -45,11 +46,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
     psbt.addOutput({ address, value })
     psbt.signAllInputs(hdKey.derive(0)).signAllInputs(hdKey.derive(1)).finalizeAllInputs()
 
-    const fastestFee = (await fetch('https://mempool.space/testnet/api/v1/fees/recommended').then(getJson)).fastestFee
-
-    const newFee = Math.max(153, psbt.extractTransaction(true).virtualSize() * fastestFee)
+    const newFee = await minimumFee(psbt)
     var finalPsbt = new bitcoin.Psbt({ network: bitcoin.networks.testnet })
-    finalPsbt.setMaximumFeeRate(fastestFee + 1)
+    // finalPsbt.setMaximumFeeRate(fastestFee + 1)
     utxos.forEach((utxo: any) => finalPsbt.addInput(utxo))
     finalPsbt.addOutput({ address, value: value - newFee })
     finalPsbt.signAllInputs(hdKey.derive(0)).signAllInputs(hdKey.derive(1)).finalizeAllInputs()

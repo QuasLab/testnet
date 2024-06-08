@@ -1,11 +1,10 @@
 import { Balance } from './types.js'
 import { getSupplyP2tr } from './depositAddress.js'
 
-import mempoolJS from '@mempool/mempool.js'
-import { MempoolReturn } from '@mempool/mempool.js/lib/interfaces/index.js'
 import { Tx } from '@mempool/mempool.js/lib/interfaces/bitcoin/transactions.js'
 import { makeBitcoinAPI } from '@mempool/mempool.js/lib/services/api/index.js'
 import { script } from 'bitcoinjs-lib'
+import { mempool } from './mempool.js'
 
 function parseTxs(txs: Tx[], address: string, protocolAddress: string): number {
   var value = 0
@@ -46,7 +45,7 @@ function parseTxs(txs: Tx[], address: string, protocolAddress: string): number {
 export async function collateralBalance(address: string): Promise<Balance> {
   const {
     bitcoin: { addresses }
-  } = mempoolJS({ hostname: 'mempool.space', network: 'testnet' }) as MempoolReturn
+  } = mempool()
   const { api } = makeBitcoinAPI({ hostname: 'mempool.space', network: 'testnet' })
 
   const protocolAddress = getSupplyP2tr().address!
