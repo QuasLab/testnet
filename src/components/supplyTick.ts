@@ -13,7 +13,7 @@ import { formatUnits } from '../lib/units'
 import { getJson } from '../../api_lib/fetch'
 import * as btc from '@scure/btc-signer'
 import { hex, utf8 } from '@scure/base'
-import { prepareInscription } from '../lib/inscribe'
+import { prepareRevealInscription } from '../lib/inscribe'
 
 @customElement('supply-tick-panel')
 export class SupplyTickPanel extends LitElement {
@@ -37,7 +37,7 @@ export class SupplyTickPanel extends LitElement {
   private async addSupply() {
     this.adding = true
     const amt = this.input.value!.valueAsNumber
-    var { alert } = toastImportant(`Preparing inscribe transaction`)
+    var { alert } = toastImportant(`Preparing supply inscription`)
     try {
       const [pubKey, address, feeRates] = await Promise.all([
         walletState.getPublicKey(),
@@ -47,14 +47,12 @@ export class SupplyTickPanel extends LitElement {
 
       if (!address) throw new Error('failed to get wallet address')
 
-      const { inscription, customScripts, revealPayment, fee } = prepareInscription(
-        this.tickQ,
-        'transfer',
-        amt,
-        address,
-        pubKey,
-        feeRates
-      )
+      const {
+        inscription,
+        customScripts,
+        revealPayment,
+        revealFee: fee
+      } = prepareRevealInscription(this.tickQ, 'transfer', amt, address, pubKey, feeRates)
       await alert.hide()
 
       // real inscribe and reveal

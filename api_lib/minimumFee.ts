@@ -1,5 +1,5 @@
 import * as bitcoin from 'bitcoinjs-lib'
-import { mempool } from './mempool'
+import { mempool } from './mempool.js'
 
 export async function minimumFee(psbt: bitcoin.Psbt): Promise<number> {
   const {

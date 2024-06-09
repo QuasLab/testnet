@@ -1,22 +1,27 @@
 import * as ordinals from 'micro-ordinals'
 import * as btc from '@scure/btc-signer'
 import { hex, utf8 } from '@scure/base'
-import { toXOnlyU8 } from './utils'
 import { P2TROut } from '@scure/btc-signer/lib/payment'
 
-export function prepareInscription(
+function toXOnlyU8(pubKey: Uint8Array): Uint8Array {
+  return pubKey.length === 32 ? pubKey : pubKey.slice(1, 33)
+}
+
+export function prepareRevealInscription(
   tick: string,
   op: string,
-  amt: number,
+  amount: number | string,
   address: string,
   pubKey: string,
   feeRates: any
-): { inscription: ordinals.Inscription; customScripts: btc.CustomScript[]; revealPayment: P2TROut; fee: any } {
+): { inscription: ordinals.Inscription; customScripts: btc.CustomScript[]; revealPayment: P2TROut; revealFee: bigint } {
   const customScripts = [ordinals.OutOrdinalReveal]
+
+  const amt = amount.toString()
 
   const inscription = {
     tags: { contentType: 'text/plain;charset=utf-8' },
-    body: utf8.decode(JSON.stringify({ p: 'brc-20', op, tick, amt: amt.toString() }))
+    body: utf8.decode(JSON.stringify({ p: 'brc-20', op, tick, amt }))
   }
 
   // fake transfer to calculate fee
@@ -52,5 +57,5 @@ export function prepareInscription(
     false,
     customScripts
   )
-  return { inscription, customScripts, revealPayment, fee }
+  return { inscription, customScripts, revealPayment, revealFee: fee }
 }
