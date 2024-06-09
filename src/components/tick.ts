@@ -7,7 +7,7 @@ import '@shoelace-style/shoelace/dist/components/button/button'
 import '@shoelace-style/shoelace/dist/components/icon/icon'
 import { Brc20Balance, Unsubscribe, walletState } from '../lib/walletState'
 import './supplyTick'
-import { formatUnits, formatUnitsComma, parseUnits } from '../lib/units'
+import { formatUnitsComma, parseUnits } from '../lib/units'
 import { toast, toastImportant } from '../lib/toast'
 import { getJson } from '../../api_lib/fetch'
 import { Brc20Price, marketState } from '../lib/marketState'
@@ -94,14 +94,12 @@ export class TickRow extends LitElement {
     ])
       .then(async ([publicKey, address, feeRates]) => {
         if (!address) throw new Error('failed to get wallet address')
-        const { inscription, customScripts, revealPayment, fee } = prepareRevealInscription(
-          tick,
-          'mint',
-          1000,
-          address,
-          publicKey,
-          feeRates
-        )
+        const {
+          inscription,
+          customScripts,
+          revealPayment,
+          revealFee: fee
+        } = prepareRevealInscription(tick, 'mint', 1000, address, publicKey, feeRates)
         await alert.hide()
 
         const value = 600n
