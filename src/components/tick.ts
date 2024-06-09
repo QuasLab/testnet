@@ -266,7 +266,7 @@ export class TickRow extends LitElement {
       }
       await alert.hide()
       toastImportant(
-        `Transfer transactions sent to network.<br>${txs
+        `Withdraw transactions sent to network.<br>${txs
           .map((txid) => `<a href="https://mempool.space/testnet/tx/${txid}">${txid}</a>`)
           .join('<br/>')}`
       )
