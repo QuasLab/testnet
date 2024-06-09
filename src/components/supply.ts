@@ -19,8 +19,12 @@ export class SupplyPanel extends LitElement {
   @state() inputValue = 0
   @state() adding = false
 
-  get walletBalance() {
+  get balanceConfirmed() {
     return walletState.balance?.confirmed ?? 0
+  }
+
+  get balance() {
+    return walletState.balance?.total ?? 0
   }
 
   constructor() {
@@ -73,7 +77,7 @@ export class SupplyPanel extends LitElement {
           <sl-button
             size="small"
             @click=${() => {
-              this.inputValue = this.walletBalance / 1e8
+              this.inputValue = this.balance / 1e8
               this.input.value!.value = this.inputValue.toString()
             }}
             pill
@@ -81,12 +85,14 @@ export class SupplyPanel extends LitElement {
           >
         </div>
         <div class="flex text-xs items-center text-sl-neutral-600">
-          <sl-icon outline name="currency-bitcoin"></sl-icon>${Math.floor(this.walletBalance / 1e8)}.${Math.floor(
-            (this.walletBalance % 1e8) / 1e4
-          )
+          <sl-icon outline name="currency-bitcoin"></sl-icon>
+          ${Math.floor(this.balance / 1e8)}.${Math.floor((this.balance % 1e8) / 1e4)
             .toString()
             .padStart(4, '0')}
-          Available
+          (${Math.floor(this.balanceConfirmed / 1e8)}.${Math.floor((this.balanceConfirmed % 1e8) / 1e4)
+            .toString()
+            .padStart(4, '0')}
+          Confirmed)
         </div>
         <div class="mt-4 flex space-x-4">
           <sl-button class="w-full" @click=${() => this.drawer.value?.hide()} pill>Cancel</sl-button>
