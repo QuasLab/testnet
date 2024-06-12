@@ -3,6 +3,14 @@ import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 /** @type {import('vite').UserConfig} */
 export default {
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        relinx: path.resolve(__dirname, 'relinx/index.html')
+      }
+    }
+  },
   css: {
     devSourcemap: true,
     modules: { generateScopedName: '[hash:base64:6]' }
