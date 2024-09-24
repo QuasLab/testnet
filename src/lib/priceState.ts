@@ -1,4 +1,4 @@
-import { State, property } from '@lit-app/state'
+import { State, StateEvent, property } from '@lit-app/state'
 
 export { StateController, type Unsubscribe } from '@lit-app/state'
 
@@ -47,7 +47,7 @@ class PriceState extends State {
   public getTickPrice(tick: string) {
     var binance = this.getPlatformTickPrice(platBinance, tick)
     var okcoin = this.getPlatformTickPrice(platOkcoin, tick)
-    console.log("prices getting", binance, okcoin)
+    console.log('prices getting', binance, okcoin)
     if (binance == '0' && okcoin == '0') {
       return 'N/A'
     } else {
@@ -65,9 +65,10 @@ class PriceState extends State {
     this.binanceWebsocket = new WebSocket(this.binance_wss)
     this.binanceWebsocket.addEventListener('message', (e: any) => {
       var msg = JSON.parse(e.data).data
-    //   console.log('receive message:', msg)
+      //   console.log('receive message:', msg)
       var tick = msg.s.substring(0, msg.s.length - 4).toLowerCase()
       this.prices[platBinance + '_' + tick] = { tick: tick, platform: platBinance, close: msg.c, volume: msg.v }
+      this.dispatchEvent(new StateEvent('prices', this.prices, this))
     })
     this.binanceWebsocket.addEventListener('close', () => {
       console.log('binance ws closed!')

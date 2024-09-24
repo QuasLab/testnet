@@ -30,6 +30,7 @@ export class PricePanel extends LitElement {
         switch (k) {
           case 'prices':
             console.log('price event-->', v)
+            this.requestUpdate()
             break
         }
       })
