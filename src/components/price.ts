@@ -19,7 +19,6 @@ export class PricePanel extends LitElement {
   private stateUnsubscribes: Unsubscribe[] = []
 
   public show() {
-    console.log('show!!')
     this.dialog.value?.show()
   }
 
@@ -140,9 +139,6 @@ export class PricePanel extends LitElement {
         </tbody>
       </table>
     </sl-dialog>`
-    // return html`<div class="text-4xl">BTC: $${this.btcPrice}</div>
-    // <div class="text-4xl">BTC(BINANCE): $${this.btcPriceBinance}</div>
-    // <div class="text-4xl">BTC(OKCOIN): $${this.btcPriceOkcoin}</div>`
   }
 }
 

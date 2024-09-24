@@ -47,6 +47,7 @@ class PriceState extends State {
   public getTickPrice(tick: string) {
     var binance = this.getPlatformTickPrice(platBinance, tick)
     var okcoin = this.getPlatformTickPrice(platOkcoin, tick)
+    console.log("prices getting", binance, okcoin)
     if (binance == '0' && okcoin == '0') {
       return 'N/A'
     } else {
