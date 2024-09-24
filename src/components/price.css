@@ -1,0 +1,7 @@
+.brc20-icon {
+    @apply w-12 h-14 inline-block bg-contain bg-center bg-no-repeat flex-none;
+  }
+
+  .brc20-icon-medium {
+    @apply w-8 h-10 inline-block bg-contain bg-center bg-no-repeat flex-none;
+  }

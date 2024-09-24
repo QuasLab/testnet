@@ -19,10 +19,12 @@ import './components/repay'
 import './components/supply'
 import './components/supplyTick'
 import './components/tick'
+import './components/price'
 import { SupplyPanel } from './components/supply'
 import { Unsubscribe, walletState } from './lib/walletState'
 import { SupplyTickPanel } from './components/supplyTick'
 import { BorrowPanel } from './components/borrow'
+import { PricePanel } from './components/price'
 import { RepayPanel } from './components/repay'
 import { toast, toastImportant } from './lib/toast'
 import { getJson } from '../api_lib/fetch'
@@ -54,6 +56,7 @@ export class AppMain extends LitElement {
   @state() balanceSats?: string
   @state() supplyPanel: Ref<SupplyPanel> = createRef<SupplyPanel>()
   @state() supplyTickPanel: Ref<SupplyTickPanel> = createRef<SupplyTickPanel>()
+  @state() pricePanel: Ref<PricePanel> = createRef<PricePanel>()
   @state() borrowPanel: Ref<BorrowPanel> = createRef<BorrowPanel>()
   @state() repayPanel: Ref<RepayPanel> = createRef<RepayPanel>()
   @state() withdrawing = false
@@ -219,8 +222,14 @@ export class AppMain extends LitElement {
     return p.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ',')
   }
 
+  showPrice() {
+    console.log(this.pricePanel.value)
+    this.pricePanel.value?.show()
+  }
+
   render() {
     return html`
+      <price-panel ${ref(this.pricePanel)}></price-panel>
       <div class="mx-auto max-w-screen-lg px-6 lg:px-0 pb-6">
         <nav class="flex justify-between py-4">
           <div class="flex">
@@ -229,6 +238,7 @@ export class AppMain extends LitElement {
             </a>
           </div>
           <div class="justify-end">
+            <sl-button @click="${() => this.showPrice()}">View Prices</sl-button>
             <connect-button></connect-button>
           </div>
         </nav>
