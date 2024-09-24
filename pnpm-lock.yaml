@@ -14,6 +14,9 @@ dependencies:
   '@lit-app/state':
     specifier: ^1.0.0
     version: 1.0.0
+  '@lit/context':
+    specifier: ^1.1.2
+    version: 1.1.2
   '@mempool/mempool.js':
     specifier: ^2.3.0
     version: 2.3.0
@@ -845,6 +848,12 @@ packages:
 
   /@lit-labs/ssr-dom-shim@1.1.2:
     resolution: {integrity: sha512-jnOD+/+dSrfTWYfSXBXlo5l5f0q1UuJo3tkbMDCYA2lKUYq79jaxqtGEvnRoh049nt1vdo1+45RinipU6FGY2g==}
+    dev: false
+
+  /@lit/context@1.1.2:
+    resolution: {integrity: sha512-S0nw2C6Tkm7fVX5TGYqeROGD+Z9Coa2iFpW+ysYBDH3YvCqOY3wVQvSgwbaliLJkjTnSEYCBe9qFqKV8WUFpVw==}
+    dependencies:
+      '@lit/reactive-element': 2.0.2
     dev: false
 
   /@lit/react@1.0.2(@types/react@18.3.3):
