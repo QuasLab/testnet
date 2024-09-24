@@ -47,7 +47,6 @@ class PriceState extends State {
   public getTickPrice(tick: string) {
     var binance = this.getPlatformTickPrice(platBinance, tick)
     var okcoin = this.getPlatformTickPrice(platOkcoin, tick)
-    console.log('prices getting', binance, okcoin)
     if (binance == '0' && okcoin == '0') {
       return 'N/A'
     } else {
@@ -82,7 +81,6 @@ class PriceState extends State {
       this.okcoinWebsocket?.send(JSON.stringify(this.okcoin_data))
     })
     this.okcoinWebsocket.addEventListener('message', (e: any) => {
-      console.log('receive message:', e.data)
       var message = JSON.parse(e.data).data
       if (message != undefined) {
         var msg = message[0]

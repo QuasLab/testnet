@@ -31,6 +31,7 @@ import { getJson } from '../api_lib/fetch'
 import { formatUnits, parseUnits } from './lib/units'
 import { marketState } from './lib/marketState'
 import { Balance } from './lib/wallets'
+import { priceState } from './lib/priceState'
 
 setBasePath(import.meta.env.MODE === 'development' ? 'node_modules/@shoelace-style/shoelace/dist' : '/')
 
@@ -91,6 +92,15 @@ export class AppMain extends LitElement {
         }
       })
     )
+    this.stateUnsubscribes.push(
+      priceState.subscribe((k, v) => {
+        switch (k) {
+          case 'prices':
+            this.requestUpdate()
+            break
+        }
+      })
+    )
     this.stateUnsubscribes.push(marketState.subscribe(() => this.updateCollateralValue(), 'brc20Price'))
     this.protocolBalanceUpdater ??= this.updateProtocolBalance()
   }
@@ -109,6 +119,18 @@ export class AppMain extends LitElement {
         .catch((e) => console.log(`failed to update protocol balance, error:`, e))
       await new Promise((r) => setTimeout(r, 60000))
     }
+  }
+
+  get btcPrice() {
+    return priceState.getTickPrice('btc')
+  }
+
+  get ordiPrice() {
+    return priceState.getTickPrice('ordi')
+  }
+
+  get satsPrice() {
+    return priceState.getTickPrice('1000sats')
   }
 
   private updateCollateralValue() {
@@ -269,7 +291,7 @@ export class AppMain extends LitElement {
                   </span>`
               )}
             </div>
-            <span class="text-xs">$0.00</span>
+            <span class="text-xs">Price: $${Number(this.btcPrice).toFixed(2)}</span>
           </div>
           <div class="mt-5 flex sm:my-auto space-x-4">
             ${when(

@@ -29,7 +29,6 @@ export class PricePanel extends LitElement {
       priceState.subscribe((k, v) => {
         switch (k) {
           case 'prices':
-            console.log('price event-->', v)
             this.requestUpdate()
             break
         }
@@ -94,7 +93,7 @@ export class PricePanel extends LitElement {
             </td>
             <td>
               <div class="relative panel !rounded-none text-center">
-                <sl-tooltip content="BRC20 SATS" placement="right-start">
+                <sl-tooltip content="BRC20 1000SATS" placement="right-start">
                   <span class="brc20-icon" style="background-image:url(brc20-sats.png)"></span>
                 </sl-tooltip>
               </div>
