@@ -64,7 +64,7 @@ export class TickRow extends LitElement {
       })
     )
     this.stateUnsubscribes.push(
-      priceState.subscribe((k, v) => {
+      priceState.subscribe((k) => {
         switch (k) {
           case 'prices':
             this.requestUpdate()

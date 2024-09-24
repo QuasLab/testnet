@@ -26,7 +26,7 @@ export class PricePanel extends LitElement {
     super.connectedCallback()
     //open websocket and subscribe data
     this.stateUnsubscribes.push(
-      priceState.subscribe((k, v) => {
+      priceState.subscribe((k) => {
         switch (k) {
           case 'prices':
             this.requestUpdate()
