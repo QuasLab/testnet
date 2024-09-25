@@ -37,7 +37,6 @@ export class TickRow extends LitElement {
       var v = priceState.getTickPrice('1000sats')
       return Number(v).toFixed(6)
     } else {
-      this.priceTick = 'Price in USD is 1 ' + this.tick
       return Number(priceState.getTickPrice(this.tick ?? '')).toFixed(2)
     }
   }
@@ -304,12 +303,17 @@ export class TickRow extends LitElement {
       <div class="ml-3 flex-auto text-xs">
         <p>
           <a href="https://testnet.unisat.io/brc20/${this.tickQ}" class="font-medium text-sm">${this.tick}</a>
-          <sl-tooltip content="${this.priceTick}" placement="right-start">
+          ${when(this.priceTick, ()=>html`<sl-tooltip content="${this.priceTick}" placement="right-start">
             <span class="text-sl-neutral-600">
               Price: ${this.price ? formatUnitsComma(parseUnits(this.price ?? '0', 18), 10) : '-'} sats
               ($${this.pricing})
             </span>
-          </sl-tooltip>
+          </sl-tooltip>`)}
+          ${when(!this.priceTick, ()=>html`
+            <span class="text-sl-neutral-600">
+              Price: ${this.price ? formatUnitsComma(parseUnits(this.price ?? '0', 18), 10) : '-'} sats
+              ($${this.pricing})
+            </span>`)}
         </p>
         <p class="text-sl-neutral-600">
           ${this.balance?.overallBalance
