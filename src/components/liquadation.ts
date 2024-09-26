@@ -135,7 +135,7 @@ export class LiquadationPanel extends LitElement {
         }
       })
       .catch((e) => {
-        toastImportant(e)
+        toastImportant(`${e}, please check <a href="" target="blank">Error Codes</a> for more information.`)
       })
 
     // const result = {
