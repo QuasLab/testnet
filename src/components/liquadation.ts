@@ -128,14 +128,19 @@ export class LiquadationPanel extends LitElement {
   }
 
   async liquadition(item: any) {
+    var repay = true
+    if (item.status == 'repay_done') {
+      repay = false
+    }
     item.status = 'progress'
     try {
-      const addr = await walletState.getDepositAddress()
-      const tx = await walletState.connector!.sendBitcoin(addr, item.repay_btc)
-      toastImportant(
-        `Your liquadation transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`
-      )
-      item.status = 'progress'
+      if (repay) {
+        const addr = await walletState.getDepositAddress()
+        const tx = await walletState.connector!.sendBitcoin(addr, item.repay_btc)
+        toastImportant(
+          `Your liquadation transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`
+        )
+      }
       await fetch(`/api/liquadition?k=${this.key}&s=${this.secret}&a=${item.amount}&symbol=${item.symbol}`)
         .then(getJson)
         .then(({ result }) => {
