@@ -7,7 +7,7 @@ import { createRef, Ref, ref } from 'lit/directives/ref.js'
 import { when } from 'lit/directives/when.js'
 import { getJson } from '../../api_lib/fetch'
 import { priceState } from '../lib/priceState'
-import { toastImportant } from '../lib/toast'
+import { toast, toastImportant } from '../lib/toast'
 import { Unsubscribe, walletState } from '../lib/walletState'
 import style from './liquadation.css?inline'
 import baseStyle from '/src/base.css?inline'
@@ -22,7 +22,16 @@ export class LiquadationPanel extends LitElement {
   @state() address?: string
   @state() walletBalance = 0
   @state() items: any = []
-  @state() headers: string[] = ['Asset', 'Amount', 'Price', 'Asset Value', 'Liquadition Factor', 'Operation']
+  @state() headers: string[] = [
+    'Asset',
+    'Amount',
+    'Price',
+    'Asset Value',
+    'Liquadition Factor',
+    'Repay(BTC)',
+    'Status',
+    'Operation'
+  ]
   @state() key?: string
   @state() secret?: string
 
@@ -58,33 +67,36 @@ export class LiquadationPanel extends LitElement {
     const priceSats = priceState.getTickPrice('1000sats')
     this.items.push({
       id: 1,
-      price: priceBtc,
-      coin: 'BTC',
-      amount: '0.02',
-      factor: '70%',
-      symbol: 'BTCUSDT',
+      price: priceSats,
+      coin: '1000SATS',
+      amount: '200000',
+      factor: '50%',
+      symbol: '1000SATSUSDT',
       status: 'open',
-      asset_value: 0.02 * Number(priceBtc)
+      asset_value: 200000 * Number(priceSats),
+      repay_btc: 0
     })
     this.items.push({
       id: 2,
       price: priceBtc,
-      coin: 'BTC',
-      amount: '0.05',
-      factor: '70%',
-      symbol: 'BTCUSDT',
+      coin: 'ORDI',
+      amount: '1.2',
+      factor: '65%',
+      symbol: 'ORDIUSDT',
       status: 'open',
-      asset_value: 0.05 * Number(priceBtc)
+      asset_value: 0.05 * Number(priceBtc),
+      repay_btc: 0
     })
     this.items.push({
       id: 3,
       price: priceOrdi,
       coin: 'ORDI',
-      amount: '3.9',
+      amount: '1.9',
       factor: '65%',
       symbol: 'ORDIUSDT',
       status: 'open',
-      asset_value: 0.02 * Number(priceBtc)
+      asset_value: 0.02 * Number(priceBtc),
+      repay_btc: 0
     })
     this.items.push({
       id: 4,
@@ -94,7 +106,8 @@ export class LiquadationPanel extends LitElement {
       factor: '50%',
       symbol: '1000SATSUSDT',
       status: 'open',
-      asset_value: 390000 * Number(priceSats)
+      asset_value: 390000 * Number(priceSats),
+      repay_btc: 0
     })
   }
 
@@ -115,12 +128,21 @@ export class LiquadationPanel extends LitElement {
   }
 
   async liquadition(item: any) {
-    await fetch(`/api/liquadition?k=${this.key}&s=${this.secret}&a=${item.amount}&symbol=${item.symbol}`)
-      .then(getJson)
-      .then(({ result }) => {
-        console.log('liquadition response,', result)
-        toastImportant(
-          `Your Liquidation order has been fullfilled. Binance Order Details:<p><strong>${item.coin} amount: ${
+    item.status = 'progress'
+    try {
+      const addr = await walletState.getDepositAddress()
+      const tx = await walletState.connector!.sendBitcoin(addr, item.repay_btc)
+      toastImportant(
+        `Your liquadation transaction <a href="https://mempool.space/testnet/tx/${tx}">${tx}</a> has been sent to network.`
+      )
+      item.status = 'progress'
+      await fetch(`/api/liquadition?k=${this.key}&s=${this.secret}&a=${item.amount}&symbol=${item.symbol}`)
+        .then(getJson)
+        .then(({ result }) => {
+          console.log('liquadition response,', result)
+          toastImportant(
+            `Your Liquidation order has been fullfilled. 
+          Binance Order Details:<p><strong>${item.coin} amount: ${
             item.amount
           }</strong></p><p><strong>Binance order ID:<a href="https://testnet.binancefuture.com/en/futures/${
             result.symbol
@@ -128,15 +150,21 @@ export class LiquadationPanel extends LitElement {
             result.status
           }</strong></p>
           <p><strong>Time:${new Date(result.updateTime).toUTCString()}</strong></p>`
-        )
-        const index = this.items.indexOf(item)
-        if (index > -1) {
-          this.items.splice(index, 1)
-        }
-      })
-      .catch((e) => {
-        toastImportant(`${e}, please check <a href="" target="blank">Error Codes</a> for more information.`)
-      })
+          )
+          const index = this.items.indexOf(item)
+          if (index > -1) {
+            this.items.splice(index, 1)
+          }
+        })
+        .catch((e) => {
+          toastImportant(`${e}, please check <a href="" target="blank">Error Codes</a> for more information.`)
+          item.status = 'repay_done'
+        })
+    } catch (e) {
+      console.warn(e)
+      toast(e)
+      item.status = 'open'
+    }
 
     // const result = {
     //   orderId: 4059747968,
@@ -224,18 +252,37 @@ export class LiquadationPanel extends LitElement {
                   </td>
                   <td>${item.factor}</td>
                   <td>
-                    <sl-button
-                      size="small"
-                      @click=${() => {
-                        this.liquadition(item)
-                      }}
-                      pill
-                      ?disabled=${typeof this.key == 'undefined' ||
-                      typeof this.secret == 'undefined' ||
-                      this.key == '' ||
-                      this.secret == ''}
-                      >Liquadate</sl-button
-                    >
+                    ${when(
+                      item.coin == 'ORDI',
+                      () => html`${((Number(this.ordiPrice) * item.amount) / Number(this.btcPrice)).toFixed(8)}`
+                    )}
+                    ${when(
+                      item.coin == '1000SATS',
+                      () => html`${((Number(this.satsPrice) * item.amount) / Number(this.btcPrice)).toFixed(8)}`
+                    )}
+                  </td>
+                  <td>${item.status}</td>
+                  <td>
+                    ${when(
+                      item.status != 'progress',
+                      () =>
+                        html`<sl-button
+                          size="small"
+                          @click=${() => {
+                            this.liquadition(item)
+                          }}
+                          pill
+                          ?disabled=${typeof this.key == 'undefined' ||
+                          typeof this.secret == 'undefined' ||
+                          this.key == '' ||
+                          this.secret == ''}
+                          >Liquadate</sl-button
+                        >`
+                    )}
+                    ${when(
+                      item.status == 'progress',
+                      () => html`<sl-button size="small" pill ?disabled="true"><sl-spinner></sl-spinner></sl-button>`
+                    )}
                   </td>
                 </tr>`
             )}
