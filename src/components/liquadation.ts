@@ -9,7 +9,7 @@ import { getJson } from '../../api_lib/fetch'
 import { priceState } from '../lib/priceState'
 import { toastImportant } from '../lib/toast'
 import { Unsubscribe, walletState } from '../lib/walletState'
-import style from './price.css?inline'
+import style from './liquadation.css?inline'
 import baseStyle from '/src/base.css?inline'
 
 @customElement('liquadation-panel')
@@ -124,7 +124,9 @@ export class LiquadationPanel extends LitElement {
             item.amount
           }</strong></p><p><strong>Binance order ID:<a href="https://testnet.binancefuture.com/en/futures/${
             result.symbol
-          }" target="blank">${result.clientOrderId}</a></strong></p><p><strong>Order status:${result.status}</strong></p>
+          }" target="blank">${result.clientOrderId}</a></strong></p><p><strong>Order status:${
+            result.status
+          }</strong></p>
           <p><strong>Time:${new Date(result.updateTime).toUTCString()}</strong></p>`
         )
         const index = this.items.indexOf(item)
@@ -162,7 +164,6 @@ export class LiquadationPanel extends LitElement {
     //   goodTillDate: 0,
     //   updateTime: 1727334277804
     // }
-    
   }
 
   render() {
