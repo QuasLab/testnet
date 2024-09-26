@@ -5,3 +5,7 @@
   .brc20-icon-medium {
     @apply w-8 h-10 inline-block bg-contain bg-center bg-no-repeat flex-none;
   }
+
+  td {
+    @apply border border-slate-200 dark:border-slate-600 p-2 pl-2 text-slate-500 dark:text-slate-400;
+  }

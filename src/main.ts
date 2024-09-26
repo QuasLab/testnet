@@ -20,6 +20,7 @@ import './components/supply'
 import './components/supplyTick'
 import './components/tick'
 import './components/price'
+import './components/liquadation'
 import { SupplyPanel } from './components/supply'
 import { Unsubscribe, walletState } from './lib/walletState'
 import { SupplyTickPanel } from './components/supplyTick'
@@ -259,7 +260,8 @@ export class AppMain extends LitElement {
               <img class="h-8 w-auto" src="logo.svg" alt="" />
             </a>
           </div>
-          <div class="justify-end">
+          <div class="flex justify-end">
+            <liquadation-panel></liquadation-panel>
             <sl-button @click="${() => this.showPrice()}">View Prices</sl-button>
             <connect-button></connect-button>
           </div>
