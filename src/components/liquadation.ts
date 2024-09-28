@@ -102,11 +102,11 @@ export class LiquadationPanel extends LitElement {
       id: 4,
       price: priceSats,
       coin: 'BTC',
-      amount: '0.0002',
+      amount: '0.002',
       factor: '70%',
       symbol: 'BTCUSDT',
       status: 'open',
-      asset_value: 0.0002 * Number(priceBtc),
+      asset_value: 0.002 * Number(priceBtc),
       repay_btc: 0
     })
   }
