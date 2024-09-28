@@ -37,7 +37,12 @@ export default async function handler(request: VercelRequest, response: VercelRe
     }
     const openedOrder = await client.submitMultipleOrders([entryOrder]).catch((e) => console.log(e?.body || e))
     console.log(openedOrder)
-    response.status(200).send({ result: openedOrder[0] })
+    var result = openedOrder[0];
+    if(result.orderId) {
+      response.status(200).send({ result: openedOrder[0] })
+    }else {
+      response.status(500).send({ result: openedOrder[0] })
+    }
   } catch (e) {
     console.log('Error:', e)
     response.status(500).send(e.body)
