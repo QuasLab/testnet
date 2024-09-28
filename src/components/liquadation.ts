@@ -68,12 +68,12 @@ export class LiquadationPanel extends LitElement {
     this.items.push({
       id: 1,
       price: priceSats,
-      coin: '1000SATS',
-      amount: '200000',
+      coin: 'ORDI',
+      amount: '0.9',
       factor: '50%',
-      symbol: '1000SATSUSDT',
+      symbol: 'ORDIUSDT',
       status: 'open',
-      asset_value: 200000 * Number(priceSats),
+      asset_value: 0.9 * Number(priceOrdi),
       repay_btc: 0
     })
     this.items.push({
@@ -84,7 +84,7 @@ export class LiquadationPanel extends LitElement {
       factor: '65%',
       symbol: 'ORDIUSDT',
       status: 'open',
-      asset_value: 0.05 * Number(priceBtc),
+      asset_value: 1.2 * Number(priceOrdi),
       repay_btc: 0
     })
     this.items.push({
@@ -95,18 +95,18 @@ export class LiquadationPanel extends LitElement {
       factor: '65%',
       symbol: 'ORDIUSDT',
       status: 'open',
-      asset_value: 0.02 * Number(priceBtc),
+      asset_value: 1.9 * Number(priceOrdi),
       repay_btc: 0
     })
     this.items.push({
       id: 4,
       price: priceSats,
-      coin: '1000SATS',
-      amount: '390000',
-      factor: '50%',
-      symbol: '1000SATSUSDT',
+      coin: 'BTC',
+      amount: '0.0002',
+      factor: '70%',
+      symbol: 'BTCUSDT',
       status: 'open',
-      asset_value: 390000 * Number(priceSats),
+      asset_value: 0.0002 * Number(priceBtc),
       repay_btc: 0
     })
   }
@@ -257,6 +257,10 @@ export class LiquadationPanel extends LitElement {
                   </td>
                   <td>${item.factor}</td>
                   <td>
+                  ${when(
+                      item.coin == 'BTC',
+                      () => html`${Number(item.amount).toFixed(8)}`
+                    )}
                     ${when(
                       item.coin == 'ORDI',
                       () => html`${((Number(this.ordiPrice) * item.amount) / Number(this.btcPrice)).toFixed(8)}`
